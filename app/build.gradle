@@ -6,7 +6,7 @@ android {
 
     defaultConfig {
         applicationId "com.kru13.httpserver"
-        minSdkVersion 8
+        minSdkVersion 9
         targetSdkVersion 17
     }
 
@@ -19,5 +19,5 @@ android {
 }
 
 dependencies {
-    compile 'com.android.support:support-v4:18.0.0'
+    implementation 'com.android.support:support-v4:18.0.0'
 }
