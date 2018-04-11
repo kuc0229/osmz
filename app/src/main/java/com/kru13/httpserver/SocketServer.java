@@ -8,6 +8,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -15,6 +16,7 @@ import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 // ADB je soucasti SDK, cestu naleznete v local.properties
 // presmerovani portu na hostitelsky pocitac
@@ -29,8 +31,10 @@ import java.util.ArrayList;
 public class SocketServer extends Thread {
 
     private ServerSocket serverSocket;
+
+    private final String storageRoot = Environment.getExternalStorageDirectory().getPath();
     public final int port = 12345;
-    boolean bRunning;
+    private boolean bRunning;
 
     public void close() {
         try {
@@ -135,37 +139,84 @@ public class SocketServer extends Thread {
 
         Log.d("REQ_FILE", fileName);
 
-        if ("/".equals(fileName)) {
-            Log.d("REQ_FILE", "character '/' found, switch to index.htm");
-            fileName = "/index.htm";
-        }
-
         if (fileName.isEmpty()) {
             processBadRequestResponse(os);
             return;
         }
 
-        File f = new File(Environment.getExternalStorageDirectory().getPath() + fileName);
-        Log.d("FILE_PATH", Environment.getExternalStorageDirectory().getPath() + fileName);
+        File targetFile = new File(storageRoot + fileName);
+        Log.d("FILE_PATH", storageRoot + fileName);
 
-        if (f.exists()) {
-            processOkResponse(os, f);
+        if (targetFile.exists()) {
 
-            FileInputStream fis = new FileInputStream(f);
-            byte buffer[] = new byte[1024];
-            int len;
+            if (targetFile.isDirectory()) {
+                File attemptIndex = new File(storageRoot + fileName + File.separatorChar + "index.htm");
 
-            while ((len = fis.read(buffer, 0, 1024)) > 0) {
-                os.write(buffer, 0, len);
+                // check if exists index.htm in directory otherwise listing directory
+                if (attemptIndex.exists() && !attemptIndex.isDirectory()) {
+                    processOkResponse(os, attemptIndex);
+                    writeFileToResponse(os, attemptIndex);
+
+                } else {
+                    Log.d("RESPONSE", "directory listing");
+                    File directory = new File(storageRoot + fileName);
+
+                    // check if target directory exist
+                    if (!directory.exists()) {
+                        processNotFoundResponse(os, directory);
+                    }
+
+                    String httpBody = createDirectoryListing(directory, Environment.getExternalStorageDirectory().getPath());
+                    processOkResponse(os, httpBody);
+                }
+            } else {
+                processOkResponse(os, targetFile);
+                writeFileToResponse(os, targetFile);
             }
-            os.flush();
-
         } else {
-            // TODO directory listing
-            Log.d("RESPONSE", "directory listing");
-
-
+            processNotFoundResponse(os, targetFile);
         }
+    }
+
+    private void writeFileToResponse(OutputStream os, File targetFile) throws IOException {
+        FileInputStream fis = new FileInputStream(targetFile);
+        byte buffer[] = new byte[1024];
+        int len;
+
+        while ((len = fis.read(buffer, 0, 1024)) > 0) {
+            os.write(buffer, 0, len);
+        }
+        os.flush();
+    }
+
+    private void processNotFoundResponse(OutputStream os, File targetFile) throws IOException {
+        Log.d("HTTP", "400 NotFound");
+        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
+
+        out.write("HTTP/1.0 400 NotFound\n");
+        out.write("\n");
+        out.write("<html><body>File: " + targetFile.getName() + " Not Found</body></html>");
+        out.flush();
+    }
+
+    private String createDirectoryListing(File directory, String rootPath) {
+        File[] files = directory.listFiles();
+        StringBuilder body = new StringBuilder(1000);
+        body.append("<html><body><ul>");
+
+        for (File f : files) {
+            body.append("<li>");
+            body.append("<a href='");
+            body.append(f.getPath().substring(rootPath.length()));
+            body.append("'>");
+            body.append(f.getName());
+            body.append("</a>");
+            body.append("</li>");
+        }
+
+        body.append("</ul></body></html>");
+
+        return body.toString();
     }
 
     private void processOkResponse(OutputStream os, File f) throws IOException {
@@ -177,7 +228,18 @@ public class SocketServer extends Thread {
         out.write("Content-Length: " + String.valueOf(f.length()) + "\n");
         out.write("\n");
         out.flush();
-        }
+    }
+
+    private void processOkResponse(OutputStream os, String body) throws IOException {
+        Log.d("HTTP", "200 OK");
+        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
+
+        out.write("HTTP/1.0 200 OK\n");
+        out.write("Content-Type: text/html\n");
+        out.write("\n");
+        out.write(body);
+        out.flush();
+    }
 
     private void processBadRequestResponse(OutputStream o, String msg) throws IOException {
 
