@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<header>
+	<title>My First HTML</title>
+  	<meta charset="UTF-8">
+</header>
+<html>
+	<body>
+		<h2>Upload file to device:</h2>
+			<form id="form" action="http://localhost:12345/uploadFile" method="post" enctype="multipart/form-data">
+				<p>
+					<input type="file" id="inputFile" name="filename">
+				</p>
+				<p>
+					<input type="submit" value="Send">
+				</p>
+			</form>
+	</body>
+</html>

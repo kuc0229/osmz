@@ -8,15 +8,15 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 // ADB je soucasti SDK, cestu naleznete v local.properties
 // presmerovani portu na hostitelsky pocitac
@@ -29,6 +29,8 @@ import java.util.Arrays;
 
 
 public class SocketServer extends Thread {
+
+    private static final String uploadDir = File.separator + "Upload";
 
     private ServerSocket serverSocket;
 
@@ -94,24 +96,31 @@ public class SocketServer extends Thread {
 
     private void processRequest(Socket s) throws IOException {
 
+        InputStream in = s.getInputStream();
         OutputStream out = s.getOutputStream();
 
-        BufferedReader in = null;
         try {
-            in = new BufferedReader(new InputStreamReader(s.getInputStream()));
+            Data payload = new Data();
+            ArrayList<String> http_req = new ArrayList<String>();
 
-            ArrayList<String> http_req = getHeaders(in);
+            getHeadersAndPayload(in, http_req, payload);
+
 
             if (http_req.isEmpty()) {
-                processResponse(HttpStatus.BAD_REQUEST, http_req, in, out);
+                processResponse(HttpStatus.BAD_REQUEST, http_req, payload, out);
                 return;
             }
 
             String httpMethod = http_req.get(0);
 
             if (httpMethod.contains("GET")) {
-                processResponse(HttpStatus.GET, http_req, in, out);
+                processResponse(HttpStatus.GET, http_req, payload, out);
             }
+
+            if (httpMethod.contains("POST")) {
+                processResponse(HttpStatus.POST, http_req, payload, out);
+            }
+
 
         } finally {
             if (in != null) {
@@ -120,19 +129,189 @@ public class SocketServer extends Thread {
         }
     }
 
-    private void processResponse(HttpStatus httpStatus, ArrayList<String> http_req, BufferedReader in, OutputStream out) throws IOException {
+    private void printHeaders(InputStream in) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+
+        String tmp = null;
+        while ((tmp = reader.readLine()) != null) {
+            System.out.println(tmp);
+        }
+
+    }
+
+    private void processResponse(HttpStatus httpStatus, ArrayList<String> http_req, Data payload, OutputStream out) throws IOException {
         switch (httpStatus) {
             case BAD_REQUEST:
-                processBadRequestResponse(out);
+                processBadResponse(out);
                 break;
             case GET:
-                processGetResponse(http_req, out);
+                processGet(http_req, out);
                 break;
+            case POST:
+                processPost(http_req, payload, out);
 
         }
     }
 
-    private void processGetResponse(ArrayList<String> http_req, OutputStream os) throws IOException {
+    private void processPost(ArrayList<String> http_req, Data payload, OutputStream out) throws IOException {
+
+        String requestURI = http_req.get(0).split(" ")[1];
+
+        if ("/uploadFile".equals(requestURI)) {
+            processUploadFile(http_req, payload, out);
+        }
+
+        processOkResponse(out, "");
+    }
+
+    private void processUploadFile(ArrayList<String> http_req, Data payload, OutputStream out) throws IOException {
+
+        char[] data = payload.getData();
+
+        String startBoundary = null;
+        String endBoundary = null;
+        String filename = null;
+        int contentLength = 0;
+
+        for (String header : http_req) {
+
+            if (header.startsWith("Content-Length:")) {
+                contentLength = Integer.parseInt(header.split(": ")[1]);
+            }
+
+            if (header.startsWith("Content-Type: ")) {
+                startBoundary = "--" + header.split("boundary=")[1];
+                endBoundary = startBoundary + "--";
+            }
+        }
+
+        String stringData = String.valueOf(data, 0, data.length);
+
+        int contentDispozitionStart = stringData.indexOf("Content-Disposition: ");
+        int contentDispozitionEnd = stringData.indexOf("\r\n", contentDispozitionStart);
+        String dispozitionHeader = stringData.substring(contentDispozitionStart, contentDispozitionEnd);
+
+        int contentTypeStart = stringData.indexOf("Content-Type: ");
+        int contentTypeEnd = stringData.indexOf("\r\n", contentTypeStart);
+        String contentTypeHeader = stringData.substring(contentTypeStart, contentTypeEnd);
+
+        int dataStart = stringData.indexOf("\r\n\r\n") + 4;
+        int dataEnd = stringData.indexOf(endBoundary) - 1;
+        String d = stringData.substring(dataStart, dataEnd);
+
+        String fileName = getFileName(dispozitionHeader);
+
+        FileOutputStream fos = new FileOutputStream(storageRoot + uploadDir + File.separator + fileName);
+        fos.write(d.getBytes());
+        fos.flush();
+
+        processOkResponse(out, "<html><body><p>Upload successful</p><p><a href='/'>Back to root directory</a></p></body></html>");
+    }
+
+    private String getFileName(String dispositionHeader) {
+
+        String[] split = dispositionHeader.split("filename=");
+
+        if (split.length > 1) {
+            String fileName = split[1];
+            // trim quotation marks
+            return fileName.substring(1, fileName.length() - 1);
+        } else {
+            return "file";
+        }
+    }
+
+    private void loadRequestPayloadAndData(ArrayList<String> http_req, InputStream in, OutputStream out, String boundary) throws IOException {
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+
+        String tmp = reader.readLine();
+
+        if (boundary.equals(tmp)) {
+            Log.d("REQUEST_PAYLOAD", "Found start boundary token");
+        }
+
+        while (!(tmp = reader.readLine()).isEmpty()) {
+            Log.d("HTTP_REQ", tmp);
+            http_req.add(tmp);
+        }
+
+
+    }
+
+    private int getContentLength(ArrayList<String> http_req) {
+
+        String len = null;
+
+        for (String s : http_req) {
+            if (s.contains("Content-Length:")) {
+                len = s.split("Content-Length:")[1];
+            }
+        }
+
+        if (len != null) {
+            return Integer.parseInt(len.trim());
+        }
+
+        return -1;
+    }
+
+    private void processContinue(OutputStream out) throws IOException {
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+
+        writer.write("100 Continue");
+        writer.newLine();
+
+//        writer.newLine();
+
+        writer.flush();
+    }
+
+    private void processRedirect(OutputStream os, ArrayList<String> http_req, String path) throws IOException {
+        Log.d("HTTP", "302 OK");
+
+        String location = "";
+
+        for (String h : http_req) {
+            if (h.contains("Host")) {
+                location = h.split(":")[1];
+            }
+        }
+
+        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
+
+        out.write("HTTP/1.0 301 OK\n");
+        out.write("Location: " + location + "/" + path);
+        out.write("\n");
+        out.flush();
+    }
+
+    private String parseUploadFileNameFromURI(String requestURI) {
+
+        int questingMarkIndex = requestURI.indexOf("?");
+
+        if (questingMarkIndex == -1) {
+            return null;
+        }
+
+        String[] args = requestURI.substring(questingMarkIndex + 1).split("&");
+
+        String fileName = null;
+
+        for (String s : args) {
+            String[] data = s.split("=");
+            String key = data[0];
+
+            if ("fileName".equals(key)) {
+                fileName = data[1];
+                break;
+            }
+        }
+
+        return fileName;
+    }
+
+    private void processGet(ArrayList<String> http_req, OutputStream os) throws IOException {
 
         String fileName;
         fileName = http_req.get(0).split(" ")[1];
@@ -140,7 +319,7 @@ public class SocketServer extends Thread {
         Log.d("REQ_FILE", fileName);
 
         if (fileName.isEmpty()) {
-            processBadRequestResponse(os);
+            processBadResponse(os);
             return;
         }
 
@@ -236,12 +415,13 @@ public class SocketServer extends Thread {
 
         out.write("HTTP/1.0 200 OK\n");
         out.write("Content-Type: text/html\n");
+        out.write("Content-Length: " + body.length() + "\n");
         out.write("\n");
         out.write(body);
         out.flush();
     }
 
-    private void processBadRequestResponse(OutputStream o, String msg) throws IOException {
+    private void processBadResponse(OutputStream o, String msg) throws IOException {
 
         Log.d("HTTP", "400 Bad request");
 //        BufferedWriter out = null;
@@ -265,23 +445,49 @@ public class SocketServer extends Thread {
 //        }
     }
 
-    private void processBadRequestResponse(OutputStream o) throws IOException {
-        processBadRequestResponse(o, "");
+    private void processBadResponse(OutputStream o) throws IOException {
+        processBadResponse(o, "");
     }
 
-    private ArrayList<String> getHeaders(BufferedReader in) throws IOException {
-        ArrayList<String> http_req = new ArrayList<String>();
+    private void getHeadersAndPayload(InputStream is, ArrayList<String> http_req, Data data) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
 
-        String tmp = in.readLine();
+        boolean isContainData = false;
+        int contentLength = 0;
+
+        String tmp = reader.readLine();
         if (tmp != null) {
             while (!tmp.isEmpty()) {
                 Log.d("HTTP_REQ", tmp);
                 http_req.add(tmp);
-                tmp = in.readLine();
+                tmp = reader.readLine();
+
+                if (tmp.startsWith("Content-Length:")) {
+                    contentLength = Integer.parseInt(tmp.split(": ")[1]);
+                }
             }
         }
 
-        return http_req;
+        if (contentLength > 0) {
+            char[] buffer = new char[contentLength];
+            int read = reader.read(buffer, 0, contentLength);
+
+            if (read > 0) {
+                data.setData(buffer);
+            } else {
+                Log.d("HTTP_REQ", "Could not read request payload");
+            }
+        }
+    }
+
+    private String parseBoundary(String token) {
+        String[] args = token.split("boundary=");
+
+        if (args.length > 0) {
+            return args[1];
+        }
+
+        return null;
     }
 
 }
