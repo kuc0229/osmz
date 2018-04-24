@@ -30,6 +30,8 @@ import java.util.ArrayList;
 
 public class SocketServer extends Thread {
 
+    private static final String uploadDir = File.separator + "Upload";
+
     private ServerSocket serverSocket;
 
     private final String storageRoot = Environment.getExternalStorageDirectory().getPath();
@@ -197,11 +199,26 @@ public class SocketServer extends Thread {
         int dataEnd = stringData.indexOf(endBoundary) - 1;
         String d = stringData.substring(dataStart, dataEnd);
 
-        FileOutputStream fos = new FileOutputStream(storageRoot + "/file");
-        fos.write(d.getBytes("UTF-8"));
+        String fileName = getFileName(dispozitionHeader);
+
+        FileOutputStream fos = new FileOutputStream(storageRoot + uploadDir + File.separator + fileName);
+        fos.write(d.getBytes());
         fos.flush();
 
-        // todo filename + to folder storageRoot/Upload
+        processOkResponse(out, "<html><body><p>Upload successful</p><p><a href='/'>Back to root directory</a></p></body></html>");
+    }
+
+    private String getFileName(String dispositionHeader) {
+
+        String[] split = dispositionHeader.split("filename=");
+
+        if (split.length > 1) {
+            String fileName = split[1];
+            // trim quotation marks
+            return fileName.substring(1, fileName.length() - 1);
+        } else {
+            return "file";
+        }
     }
 
     private void loadRequestPayloadAndData(ArrayList<String> http_req, InputStream in, OutputStream out, String boundary) throws IOException {
@@ -398,6 +415,7 @@ public class SocketServer extends Thread {
 
         out.write("HTTP/1.0 200 OK\n");
         out.write("Content-Type: text/html\n");
+        out.write("Content-Length: " + body.length() + "\n");
         out.write("\n");
         out.write(body);
         out.flush();

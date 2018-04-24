@@ -2,27 +2,6 @@
 <header>
 	<title>My First HTML</title>
   	<meta charset="UTF-8">
-<!-- 
-	<script type="text/javascript">
-		function getFileName(name) {
-			lastBackSlash = name.lastIndexOf("\\");
-			return name.substring(lastBackSlash+1).replace(new RegExp(" ", 'g'), "_");
-		}
-
-		function upload(event) {
-		 	form = document.getElementById("form");
-		 	fileName = document.getElementById("inputFile").value;
-
-		 	if (fileName === "") {
-		 		alert("Please select file");
-		 		event.preventDefault();
-		 		return;
-		 	}
-
-		 	form.action = window.location.origin + "/uploadFile" + "?" + "fileName=" + getFileName(fileName);
-		 	form.submit();
-		 } 
-	</script> -->
 </header>
 <html>
 	<body>
@@ -32,7 +11,6 @@
 					<input type="file" id="inputFile" name="filename">
 				</p>
 				<p>
-					<!-- <button onclick="upload(event)">Upload</button> -->
 					<input type="submit" value="Send">
 				</p>
 			</form>
