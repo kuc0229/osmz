@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.kru13.httpserver.entities.DataWrapper;
 import com.kru13.httpserver.enums.HttpStatus;
+import com.kru13.httpserver.service.HttpServerService;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -28,16 +29,23 @@ import java.util.List;
 // C:\Users\kucabpet\AppData\Local\Android\Sdk\platform-tools\adb.exe forward tcp:12345 tcp:12345
 
 
-public class SocketServer extends Thread {
+public class SocketServer {
 
     final int port = 12345;
     private boolean bRunning;
     private ServerSocket serverSocket;
     private List<RequestEvent> clients = new ArrayList<RequestEvent>();
+    private HttpServerService systemService;
+
+    public SocketServer(HttpServerService httpServerService) {
+        this.systemService = httpServerService;
+    }
 
     public void run() {
         try {
             Log.d("SERVER", "Creating Socket");
+            systemService.createNotification("Create socket...");
+
             serverSocket = new ServerSocket(port);
             bRunning = true;
 
@@ -45,6 +53,7 @@ public class SocketServer extends Thread {
                 Log.d("SERVER", "Socket Waiting for connection");
                 Socket s = serverSocket.accept();
                 Log.d("Socket SERVER", "Socket Accepted #" + s.hashCode());
+                systemService.createNotification("Accepted connection from " + s.getInetAddress() + ":" + s.getPort());
 
                 RequestEvent requestEvent = new RequestEvent(s);
                 requestEvent.start();
@@ -65,6 +74,7 @@ public class SocketServer extends Thread {
 
     public void close() {
         try {
+            systemService.createNotification("Close socket.");
             if (serverSocket != null) {
                 serverSocket.close();
             }

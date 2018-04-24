@@ -6,7 +6,7 @@ android {
 
     defaultConfig {
         applicationId "com.kru13.httpserver"
-        minSdkVersion 9
+        minSdkVersion 16
         targetSdkVersion 17
     }
 

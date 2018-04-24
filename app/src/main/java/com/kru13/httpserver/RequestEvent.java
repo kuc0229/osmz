@@ -2,6 +2,8 @@ package com.kru13.httpserver;
 
 import android.util.Log;
 
+import com.kru13.httpserver.service.HttpServerService;
+
 import java.io.IOException;
 import java.net.Socket;
 
@@ -44,5 +46,9 @@ public class RequestEvent extends Thread {
 
     public boolean isComplete() {
         return complete;
+    }
+
+    public Socket getSocket() {
+        return socket;
     }
 }

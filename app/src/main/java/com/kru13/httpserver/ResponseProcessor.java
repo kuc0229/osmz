@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.kru13.httpserver.entities.DataWrapper;
 import com.kru13.httpserver.enums.HttpStatus;
+import com.kru13.httpserver.service.HttpServerService;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -23,10 +24,10 @@ public class ResponseProcessor {
     public final String uploadDir = File.separator + "Upload";
     public final String storageRoot = Environment.getExternalStorageDirectory().getPath();
 
-    private HTTPResponseProcessor responseProcessor;
+    private HttpResponseProcessor responseProcessor;
 
     public ResponseProcessor() {
-        this.responseProcessor = new HTTPResponseProcessor();
+        this.responseProcessor = new HttpResponseProcessor();
     }
 
     void processRequest(Socket s) throws IOException {

@@ -12,7 +12,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 
-public class HTTPResponseProcessor {
+public class HttpResponseProcessor {
 
     // url = file path or whatever suitable URL you want.
     static String getMimeType(String url) {
