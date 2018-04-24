@@ -2,18 +2,17 @@ package com.kru13.httpserver;
 
 import android.os.Environment;
 import android.util.Log;
-import android.webkit.MimeTypeMap;
+
+import com.kru13.httpserver.entities.DataWrapper;
+import com.kru13.httpserver.enums.HttpStatus;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -30,11 +29,12 @@ import java.util.ArrayList;
 
 public class SocketServer extends Thread {
 
-    private static final String uploadDir = File.separator + "Upload";
+    public static final String uploadDir = File.separator + "Upload";
+
+    public final String storageRoot = Environment.getExternalStorageDirectory().getPath();
+    private ResponseProcessor responseProcessor = new ResponseProcessor();
 
     private ServerSocket serverSocket;
-
-    private final String storageRoot = Environment.getExternalStorageDirectory().getPath();
     public final int port = 12345;
     private boolean bRunning;
 
@@ -48,21 +48,6 @@ public class SocketServer extends Thread {
             e.printStackTrace();
         }
         bRunning = false;
-    }
-
-    // url = file path or whatever suitable URL you want.
-    public static String getMimeType(String url) {
-        String type = null;
-        String extension = MimeTypeMap.getFileExtensionFromUrl(url);
-        if (extension != null) {
-            type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
-        }
-
-        if (type == null) {
-            type = "application/x-binary";
-        }
-
-        return type;
     }
 
     public void run() {
@@ -100,7 +85,7 @@ public class SocketServer extends Thread {
         OutputStream out = s.getOutputStream();
 
         try {
-            Data payload = new Data();
+            DataWrapper payload = new DataWrapper();
             ArrayList<String> http_req = new ArrayList<String>();
 
             getHeadersAndPayload(in, http_req, payload);
@@ -129,17 +114,7 @@ public class SocketServer extends Thread {
         }
     }
 
-    private void printHeaders(InputStream in) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-
-        String tmp = null;
-        while ((tmp = reader.readLine()) != null) {
-            System.out.println(tmp);
-        }
-
-    }
-
-    private void processResponse(HttpStatus httpStatus, ArrayList<String> http_req, Data payload, OutputStream out) throws IOException {
+    private void processResponse(HttpStatus httpStatus, ArrayList<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
         switch (httpStatus) {
             case BAD_REQUEST:
                 processBadResponse(out);
@@ -153,7 +128,7 @@ public class SocketServer extends Thread {
         }
     }
 
-    private void processPost(ArrayList<String> http_req, Data payload, OutputStream out) throws IOException {
+    private void processPost(ArrayList<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
 
         String requestURI = http_req.get(0).split(" ")[1];
 
@@ -161,10 +136,10 @@ public class SocketServer extends Thread {
             processUploadFile(http_req, payload, out);
         }
 
-        processOkResponse(out, "");
+        responseProcessor.processOkResponse(out, "");
     }
 
-    private void processUploadFile(ArrayList<String> http_req, Data payload, OutputStream out) throws IOException {
+    private void processUploadFile(ArrayList<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
 
         char[] data = payload.getData();
 
@@ -205,7 +180,8 @@ public class SocketServer extends Thread {
         fos.write(d.getBytes());
         fos.flush();
 
-        processOkResponse(out, "<html><body><p>Upload successful</p><p><a href='/'>Back to root directory</a></p></body></html>");
+        responseProcessor.processOkResponse(out,
+                "<html><body><p>Upload successful</p><p><a href='/'>Back to root directory</a></p></body></html>");
     }
 
     private String getFileName(String dispositionHeader) {
@@ -219,96 +195,6 @@ public class SocketServer extends Thread {
         } else {
             return "file";
         }
-    }
-
-    private void loadRequestPayloadAndData(ArrayList<String> http_req, InputStream in, OutputStream out, String boundary) throws IOException {
-
-        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-
-        String tmp = reader.readLine();
-
-        if (boundary.equals(tmp)) {
-            Log.d("REQUEST_PAYLOAD", "Found start boundary token");
-        }
-
-        while (!(tmp = reader.readLine()).isEmpty()) {
-            Log.d("HTTP_REQ", tmp);
-            http_req.add(tmp);
-        }
-
-
-    }
-
-    private int getContentLength(ArrayList<String> http_req) {
-
-        String len = null;
-
-        for (String s : http_req) {
-            if (s.contains("Content-Length:")) {
-                len = s.split("Content-Length:")[1];
-            }
-        }
-
-        if (len != null) {
-            return Integer.parseInt(len.trim());
-        }
-
-        return -1;
-    }
-
-    private void processContinue(OutputStream out) throws IOException {
-        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
-
-        writer.write("100 Continue");
-        writer.newLine();
-
-//        writer.newLine();
-
-        writer.flush();
-    }
-
-    private void processRedirect(OutputStream os, ArrayList<String> http_req, String path) throws IOException {
-        Log.d("HTTP", "302 OK");
-
-        String location = "";
-
-        for (String h : http_req) {
-            if (h.contains("Host")) {
-                location = h.split(":")[1];
-            }
-        }
-
-        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
-
-        out.write("HTTP/1.0 301 OK\n");
-        out.write("Location: " + location + "/" + path);
-        out.write("\n");
-        out.flush();
-    }
-
-    private String parseUploadFileNameFromURI(String requestURI) {
-
-        int questingMarkIndex = requestURI.indexOf("?");
-
-        if (questingMarkIndex == -1) {
-            return null;
-        }
-
-        String[] args = requestURI.substring(questingMarkIndex + 1).split("&");
-
-        String fileName = null;
-
-        for (String s : args) {
-            String[] data = s.split("=");
-            String key = data[0];
-
-            if ("fileName".equals(key)) {
-                fileName = data[1];
-                break;
-            }
-        }
-
-        return fileName;
     }
 
     private void processGet(ArrayList<String> http_req, OutputStream os) throws IOException {
@@ -333,8 +219,8 @@ public class SocketServer extends Thread {
 
                 // check if exists index.htm in directory otherwise listing directory
                 if (attemptIndex.exists() && !attemptIndex.isDirectory()) {
-                    processOkResponse(os, attemptIndex);
-                    writeFileToResponse(os, attemptIndex);
+                    responseProcessor.processOkResponse(os, attemptIndex);
+                    responseProcessor.writeFileToResponse(os, attemptIndex);
 
                 } else {
                     Log.d("RESPONSE", "directory listing");
@@ -342,40 +228,23 @@ public class SocketServer extends Thread {
 
                     // check if target directory exist
                     if (!directory.exists()) {
-                        processNotFoundResponse(os, directory);
+                        responseProcessor.processNotFoundResponse(os, directory);
                     }
 
                     String httpBody = createDirectoryListing(directory, Environment.getExternalStorageDirectory().getPath());
-                    processOkResponse(os, httpBody);
+                    responseProcessor.processOkResponse(os, httpBody);
                 }
             } else {
-                processOkResponse(os, targetFile);
-                writeFileToResponse(os, targetFile);
+                responseProcessor.processOkResponse(os, targetFile);
+                responseProcessor.writeFileToResponse(os, targetFile);
             }
         } else {
-            processNotFoundResponse(os, targetFile);
+            responseProcessor.processNotFoundResponse(os, targetFile);
         }
     }
 
-    private void writeFileToResponse(OutputStream os, File targetFile) throws IOException {
-        FileInputStream fis = new FileInputStream(targetFile);
-        byte buffer[] = new byte[1024];
-        int len;
-
-        while ((len = fis.read(buffer, 0, 1024)) > 0) {
-            os.write(buffer, 0, len);
-        }
-        os.flush();
-    }
-
-    private void processNotFoundResponse(OutputStream os, File targetFile) throws IOException {
-        Log.d("HTTP", "400 NotFound");
-        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
-
-        out.write("HTTP/1.0 400 NotFound\n");
-        out.write("\n");
-        out.write("<html><body>File: " + targetFile.getName() + " Not Found</body></html>");
-        out.flush();
+    private void processBadResponse(OutputStream o) throws IOException {
+        responseProcessor.processBadResponse(o, "");
     }
 
     private String createDirectoryListing(File directory, String rootPath) {
@@ -398,58 +267,7 @@ public class SocketServer extends Thread {
         return body.toString();
     }
 
-    private void processOkResponse(OutputStream os, File f) throws IOException {
-        Log.d("HTTP", "200 OK");
-        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
-
-        out.write("HTTP/1.0 200 OK\n");
-        out.write("Content-Type: " + getMimeType(f.getName()) + "\n");
-        out.write("Content-Length: " + String.valueOf(f.length()) + "\n");
-        out.write("\n");
-        out.flush();
-    }
-
-    private void processOkResponse(OutputStream os, String body) throws IOException {
-        Log.d("HTTP", "200 OK");
-        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
-
-        out.write("HTTP/1.0 200 OK\n");
-        out.write("Content-Type: text/html\n");
-        out.write("Content-Length: " + body.length() + "\n");
-        out.write("\n");
-        out.write(body);
-        out.flush();
-    }
-
-    private void processBadResponse(OutputStream o, String msg) throws IOException {
-
-        Log.d("HTTP", "400 Bad request");
-//        BufferedWriter out = null;
-
-//        try {
-        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));
-
-        out.write("HTTP/1.0 400 Bad Request\n");
-        out.write("Content-Type: text/html\n");
-        out.write("\n");
-        out.write("<html><body>");
-        out.write("<h3>Bad Request</h3>");
-        out.write("<h4>Message:</h4>");
-        out.write("<p>" + msg + "</p>");
-        out.write("</body></html>");
-        out.flush();
-//        } finally {
-//            if (out != null) {
-//                out.close();
-//            }
-//        }
-    }
-
-    private void processBadResponse(OutputStream o) throws IOException {
-        processBadResponse(o, "");
-    }
-
-    private void getHeadersAndPayload(InputStream is, ArrayList<String> http_req, Data data) throws IOException {
+    private void getHeadersAndPayload(InputStream is, ArrayList<String> http_req, DataWrapper data) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
 
         boolean isContainData = false;
@@ -478,16 +296,6 @@ public class SocketServer extends Thread {
                 Log.d("HTTP_REQ", "Could not read request payload");
             }
         }
-    }
-
-    private String parseBoundary(String token) {
-        String[] args = token.split("boundary=");
-
-        if (args.length > 0) {
-            return args[1];
-        }
-
-        return null;
     }
 
 }

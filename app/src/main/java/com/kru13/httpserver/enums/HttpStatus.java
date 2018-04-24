@@ -1,4 +1,4 @@
-package com.kru13.httpserver;
+package com.kru13.httpserver.enums;
 
 public enum HttpStatus {
 

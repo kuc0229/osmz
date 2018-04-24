@@ -1,6 +1,6 @@
-package com.kru13.httpserver;
+package com.kru13.httpserver.entities;
 
-public class Data {
+public class DataWrapper {
 
     private char[] data;
 
