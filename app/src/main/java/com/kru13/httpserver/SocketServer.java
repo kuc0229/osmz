@@ -1,23 +1,15 @@
 package com.kru13.httpserver;
 
-import android.os.Environment;
 import android.util.Log;
 
-import com.kru13.httpserver.entities.DataWrapper;
-import com.kru13.httpserver.enums.HttpStatus;
 import com.kru13.httpserver.service.HttpServerService;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 
 // ADB je soucasti SDK, cestu naleznete v local.properties
 // presmerovani portu na hostitelsky pocitac
@@ -31,25 +23,30 @@ import java.util.List;
 
 public class SocketServer {
 
-    final int port = 12345;
+    private static final int MAX_CLIENTS = 2;
+    private static final int PORT = 12345;
+
     private boolean bRunning;
     private ServerSocket serverSocket;
-    private List<RequestEvent> clients = new ArrayList<RequestEvent>();
     private HttpServerService systemService;
+    private List<RequestEvent> clients = new ArrayList<RequestEvent>();
+    private final Semaphore available = new Semaphore(MAX_CLIENTS, true);
 
     public SocketServer(HttpServerService httpServerService) {
         this.systemService = httpServerService;
     }
 
-    public void run() {
+    public void run() throws InterruptedException {
         try {
             Log.d("SERVER", "Creating Socket");
             systemService.createNotification("Create socket...");
 
-            serverSocket = new ServerSocket(port);
+            serverSocket = new ServerSocket(PORT);
             bRunning = true;
 
             while (bRunning) {
+                getAcquire();
+
                 Log.d("SERVER", "Socket Waiting for connection");
                 Socket s = serverSocket.accept();
                 Log.d("Socket SERVER", "Socket Accepted #" + s.hashCode());
@@ -58,6 +55,8 @@ public class SocketServer {
                 RequestEvent requestEvent = new RequestEvent(s);
                 requestEvent.start();
                 clients.add(requestEvent);
+
+                release();
             }
         } catch (IOException e) {
             if (serverSocket != null && serverSocket.isClosed())
@@ -69,7 +68,18 @@ public class SocketServer {
         } finally {
             serverSocket = null;
             bRunning = false;
+            release();
         }
+    }
+
+    protected void getAcquire() throws InterruptedException {
+        available.acquire();
+        Log.d("SEMAPHORE", "permit has been gotten");
+    }
+
+    private void release() {
+        available.release();
+        Log.d("SEMAPHORE", "permit has been released");
     }
 
     public void close() {

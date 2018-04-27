@@ -19,8 +19,6 @@ import java.util.ArrayList;
 
 public class ResponseProcessor {
 
-    static int c = 8000;
-
     public final String uploadDir = File.separator + "Upload";
     public final String storageRoot = Environment.getExternalStorageDirectory().getPath();
 

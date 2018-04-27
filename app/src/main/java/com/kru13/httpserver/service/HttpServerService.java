@@ -4,6 +4,7 @@ import android.app.IntentService;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.kru13.httpserver.SocketServer;
@@ -27,7 +28,12 @@ public class HttpServerService extends IntentService {
     @Override
     protected void onHandleIntent(Intent intent) {
         this.s = new SocketServer(this);
-        this.s.run();
+        try {
+            this.s.run();
+        } catch (InterruptedException e) {
+            Log.d(HTTP_SERVER_SERVICE_NAME, "interrupted exception");
+            this.stopSelf();
+        }
     }
 
     @Override

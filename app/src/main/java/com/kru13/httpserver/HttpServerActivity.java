@@ -46,9 +46,8 @@ public class HttpServerActivity extends Activity implements OnClickListener {
         if (v.getId() == R.id.button1) {
             this.httpServerService = new Intent(this, HttpServerService.class);
             startService(this.httpServerService);
-
-
         }
+
         if (v.getId() == R.id.button2) {
             if (httpServerService != null) {
                 stopService(this.httpServerService);
