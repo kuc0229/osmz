@@ -29,7 +29,7 @@ public class SocketServer {
         clients = new ArrayList<RequestEvent>();
     }
 
-    public void start() throws InterruptedException {
+    public void start() {
         try {
             Log.d("SERVER", "Creating Socket");
             systemService.createNotification("Create socket...");
@@ -46,7 +46,10 @@ public class SocketServer {
 
                 RequestEvent requestEvent = new RequestEvent(s);
                 requestEvent.start();
-                clients.add(requestEvent);
+
+                synchronized (clients) {
+                    clients.add(requestEvent);
+                }
 
                 release();
             }
@@ -55,8 +58,9 @@ public class SocketServer {
                 Log.d("SERVER", "Normal exit");
             else {
                 Log.d("SERVER", "Error");
-                e.printStackTrace();
             }
+        } catch (InterruptedException e) {
+            Log.d("SERVER", "Interrupted " + e);
         } finally {
             serverSocket = null;
             bRunning = false;

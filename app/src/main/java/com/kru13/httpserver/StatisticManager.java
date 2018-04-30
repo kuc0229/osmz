@@ -20,10 +20,11 @@ import java.util.List;
 
 public class StatisticManager extends Thread {
 
-    private static final int SYNC_TIME = 1500;
-    private static final File storage;
+    private static final int SYNC_TIME = 1000;
+    private static File storage;
+    private static final Object lock = new Object();
 
-    static {
+    public static void initilizeStorage() {
         try {
             storage = File.createTempFile("statistic-manager", null);
             Log.d("STATISTIC MANAGER", "create storage " + storage.getPath());
@@ -56,42 +57,52 @@ public class StatisticManager extends Thread {
         while (running) {
 
             if (clients != null) {
+                sync(300);
                 activeClients = 0;
                 transferredBytes = 0;
                 requestCount = 0;
 
                 synchronized (clients) {
+                    activeClients = parseActiveClients(clients);
                     for (RequestEvent r : clients) {
-                        if (!r.isIssued()) {
-                            transferredBytes += parseContentLength(r);
+                        if (!r.isIssued() && r.isComplete()) {
+                            Log.d("STATISTIC MANAGER", "processing " + r.getHttpHeaders());
                             requestCount++;
+                            transferredBytes += parseContentLength(r);
                             r.setIssued(true);
                         }
                     }
-                    activeClients = parseActiveClients(clients);
                 }
 
-                if (!(activeClients == 0 && transferredBytes == 0 && requestCount == 0)) {
-                    updateData(activeClients, transferredBytes, requestCount);
-                }
+                updateData(activeClients, transferredBytes, requestCount);
             }
 
             if (handler != null) {
+                sync(200);
                 StatisticData data = readData();
                 Message message = Message.obtain();
                 message.obj = data;
                 handler.sendMessage(message);
             }
 
+
             try {
-                // Synchronized
                 Thread.sleep(SYNC_TIME);
             } catch (InterruptedException e) {
-                Log.d("STATISTIC MANAGER", "synchronization error");
+                Log.d("STATISTIC MANAGER", "sleep time error " + e);
             }
         }
 
         Log.d("STATISTIC MANAGER", "delete storage file " + (storage.delete() ? "success" : "false"));
+    }
+
+    private void sync(int milisecond) {
+        try {
+            // synchronized time
+            Thread.sleep(milisecond);
+        } catch (InterruptedException e) {
+            Log.d("STATISTIC MANAGER", "synchronization error" + e);
+        }
     }
 
     private int parseActiveClients(List<RequestEvent> clients) {
@@ -142,14 +153,16 @@ public class StatisticManager extends Thread {
     private int parseContentLength(RequestEvent r) {
         int contentLength = 0;
 
-        for (String h : r.getHttpHeaders()) {
-            if (h.startsWith("Content-Length: ")) {
-                try {
-                    contentLength = Integer.parseInt(h.split("Content-Length: ")[1]);
-                } catch (Exception e) {
-                    Log.d("STATISTIC MANAGER", "can not parse " + h + " header");
+        if (r.getHttpHeaders() != null) {
+            for (String h : r.getHttpHeaders()) {
+                if (h.startsWith("Content-Length: ")) {
+                    try {
+                        contentLength = Integer.parseInt(h.split("Content-Length: ")[1]);
+                    } catch (Exception e) {
+                        Log.d("STATISTIC MANAGER", "can not parse " + h + " header");
+                    }
+                    break;
                 }
-                break;
             }
         }
 

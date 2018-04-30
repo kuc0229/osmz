@@ -20,6 +20,7 @@ public class MainActivity extends Activity implements OnClickListener, Handler.C
 
     private Intent httpServerService;
     private StatisticManager statisticManager;
+    private Handler handler;
 
     @SuppressLint("HandlerLeak")
     @Override
@@ -33,7 +34,7 @@ public class MainActivity extends Activity implements OnClickListener, Handler.C
         btn1.setOnClickListener(this);
         btn2.setOnClickListener(this);
 
-        Handler handler = new Handler() {
+        handler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
                 if (msg.obj instanceof StatisticData) {
@@ -45,7 +46,6 @@ public class MainActivity extends Activity implements OnClickListener, Handler.C
                 }
             }
         };
-        statisticManager = new StatisticManager(handler);
     }
 
     private void updateStatistic(StatisticData data) {
@@ -55,7 +55,7 @@ public class MainActivity extends Activity implements OnClickListener, Handler.C
 
         requestCountView.setText(String.valueOf(data.getCurrentRequestCount()));
         // convert to MB
-        transferredBytesView.setText(String.valueOf(Math.round(data.getCurrentTransferredBytes() / (1024 * 1024)) / 1.0));
+        transferredBytesView.setText(String.valueOf(Math.round(data.getCurrentTransferredBytes() / 1024) / 1.0));
         currentClientsValue.setText(String.valueOf(data.getCurrentActiveClients()));
     }
 
@@ -68,10 +68,11 @@ public class MainActivity extends Activity implements OnClickListener, Handler.C
 
     @Override
     public void onClick(View v) {
-        // TODO Auto-generated method stub
         if (v.getId() == R.id.button1) {
             this.httpServerService = new Intent(this, HttpServerService.class);
             startService(this.httpServerService);
+            StatisticManager.initilizeStorage();
+            statisticManager = new StatisticManager(handler);
             statisticManager.start();
         }
 

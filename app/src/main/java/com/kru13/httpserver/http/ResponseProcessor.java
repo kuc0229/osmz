@@ -41,7 +41,6 @@ public class ResponseProcessor {
 
             getHeadersAndPayload(in, http_req, payload);
 
-
             if (http_req.isEmpty()) {
                 processResponse(HttpStatus.BAD_REQUEST, http_req, payload, out);
                 return;
@@ -93,21 +92,20 @@ public class ResponseProcessor {
 
         char[] data = payload.getData();
 
-        String startBoundary = null;
+        String startBoundary;
         String endBoundary = null;
-        String filename = null;
-        int contentLength = 0;
 
         for (String header : http_req) {
-
-            if (header.startsWith("Content-Length:")) {
-                contentLength = Integer.parseInt(header.split(": ")[1]);
-            }
-
             if (header.startsWith("Content-Type: ")) {
                 startBoundary = "--" + header.split("boundary=")[1];
                 endBoundary = startBoundary + "--";
             }
+        }
+
+        if (endBoundary == null) {
+            Log.d("RESPONSE PROCCESSOR", "could not found boundary");
+            responseProcessor.processBadResponse(out, "Error during processing payload.");
+            return;
         }
 
         String stringData = String.valueOf(data, 0, data.length);
@@ -120,8 +118,8 @@ public class ResponseProcessor {
         int contentTypeEnd = stringData.indexOf("\r\n", contentTypeStart);
         String contentTypeHeader = stringData.substring(contentTypeStart, contentTypeEnd);
 
-        int dataStart = stringData.indexOf("\r\n\r\n") + 4;
-        int dataEnd = stringData.indexOf(endBoundary) - 1;
+        int dataStart = stringData.indexOf("\r\n\r\n")+4;
+        int dataEnd = stringData.indexOf(endBoundary, dataStart);
         String d = stringData.substring(dataStart, dataEnd);
 
         String fileName = getFileName(dispositionHeader);

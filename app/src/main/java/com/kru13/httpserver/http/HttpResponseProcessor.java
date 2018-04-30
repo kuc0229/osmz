@@ -54,9 +54,6 @@ public class HttpResponseProcessor {
     void processBadResponse(OutputStream o, String msg) throws IOException {
 
         Log.d("HTTP", "400 Bad request");
-//        BufferedWriter out = null;
-
-//        try {
         BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));
 
         out.write("HTTP/1.0 400 Bad Request\n");
@@ -68,11 +65,6 @@ public class HttpResponseProcessor {
         out.write("<p>" + msg + "</p>");
         out.write("</body></html>");
         out.flush();
-//        } finally {
-//            if (out != null) {
-//                out.close();
-//            }
-//        }
     }
 
     void writeFileToResponse(OutputStream os, File targetFile) throws IOException {
@@ -93,36 +85,6 @@ public class HttpResponseProcessor {
         out.write("HTTP/1.0 400 NotFound\n");
         out.write("\n");
         out.write("<html><body>File: " + targetFile.getName() + " Not Found</body></html>");
-        out.flush();
-    }
-
-    void processContinue(OutputStream out) throws IOException {
-        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
-
-        writer.write("100 Continue");
-        writer.newLine();
-
-//        writer.newLine();
-
-        writer.flush();
-    }
-
-    void processRedirect(OutputStream os, ArrayList<String> http_req, String path) throws IOException {
-        Log.d("HTTP", "302 OK");
-
-        String location = "";
-
-        for (String h : http_req) {
-            if (h.contains("Host")) {
-                location = h.split(":")[1];
-            }
-        }
-
-        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
-
-        out.write("HTTP/1.0 301 OK\n");
-        out.write("Location: " + location + "/" + path);
-        out.write("\n");
         out.flush();
     }
 

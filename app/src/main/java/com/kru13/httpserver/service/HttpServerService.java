@@ -28,12 +28,7 @@ public class HttpServerService extends IntentService {
         this.socketServer = new SocketServer(this);
         this.statisticManager = new StatisticManager(this.socketServer.getClients());
         this.statisticManager.start();
-        try {
-            this.socketServer.start();
-        } catch (InterruptedException e) {
-            Log.d(HTTP_SERVER_SERVICE_NAME, "interrupted exception");
-            this.stopSelf();
-        }
+        this.socketServer.start();
     }
 
     @Override

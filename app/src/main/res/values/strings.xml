@@ -7,7 +7,7 @@
     <string name="btn1_text">Start HTTP Server</string>
     <string name="btn2_text">Stop HTTP Server</string>
     <string name="statistics">Statistics</string>
-    <string name="transferred_bytes">Transferred size (MB):</string>
+    <string name="transferred_bytes">Transferred size (KB):</string>
     <string name="request_count">Request count:</string>
     <string name="current_clients">Current clients:</string>
 

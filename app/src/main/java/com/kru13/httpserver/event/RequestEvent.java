@@ -12,13 +12,16 @@ public class RequestEvent extends Thread {
 
     private final Socket socket;
     private final ResponseProcessor responseProcessor;
+
     private boolean complete;
     private boolean issued;
+    private boolean proccessing;
 
     public RequestEvent(Socket socket) {
         this.socket = socket;
         this.complete = false;
         this.issued = false;
+        this.proccessing = true;
         this.responseProcessor = new ResponseProcessor();
     }
 
@@ -63,7 +66,10 @@ public class RequestEvent extends Thread {
         this.issued = issued;
     }
 
+
     public List<String> getHttpHeaders() {
         return this.responseProcessor.getHttp_req();
     }
+
 }
+
