@@ -1,6 +1,5 @@
-package com.kru13.httpserver;
+package com.kru13.httpserver.http;
 
-import android.os.Environment;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
 
@@ -15,7 +14,7 @@ import java.util.ArrayList;
 public class HttpResponseProcessor {
 
     // url = file path or whatever suitable URL you want.
-    static String getMimeType(String url) {
+    private static String getMimeType(String url) {
         String type = null;
         String extension = MimeTypeMap.getFileExtensionFromUrl(url);
         if (extension != null) {

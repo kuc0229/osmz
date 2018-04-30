@@ -1,4 +1,4 @@
-package com.kru13.httpserver.entities;
+package com.kru13.httpserver.model;
 
 public class DataWrapper {
 

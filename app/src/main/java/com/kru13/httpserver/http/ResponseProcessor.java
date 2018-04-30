@@ -1,11 +1,11 @@
-package com.kru13.httpserver;
+package com.kru13.httpserver.http;
 
 import android.os.Environment;
 import android.util.Log;
 
-import com.kru13.httpserver.entities.DataWrapper;
+import com.kru13.httpserver.model.DataWrapper;
 import com.kru13.httpserver.enums.HttpStatus;
-import com.kru13.httpserver.service.HttpServerService;
+import com.kru13.httpserver.http.HttpResponseProcessor;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -16,26 +16,28 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.List;
 
 public class ResponseProcessor {
 
     public final String uploadDir = File.separator + "Upload";
     public final String storageRoot = Environment.getExternalStorageDirectory().getPath();
 
+    private List<String> http_req;
     private HttpResponseProcessor responseProcessor;
 
     public ResponseProcessor() {
         this.responseProcessor = new HttpResponseProcessor();
     }
 
-    void processRequest(Socket s) throws IOException {
+    public void processRequest(Socket s) throws IOException {
 
         InputStream in = s.getInputStream();
         OutputStream out = s.getOutputStream();
 
         try {
             DataWrapper payload = new DataWrapper();
-            ArrayList<String> http_req = new ArrayList<String>();
+            http_req = new ArrayList<String>();
 
             getHeadersAndPayload(in, http_req, payload);
 
@@ -62,7 +64,7 @@ public class ResponseProcessor {
         }
     }
 
-    void processResponse(HttpStatus httpStatus, ArrayList<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
+    public void processResponse(HttpStatus httpStatus, List<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
         switch (httpStatus) {
             case BAD_REQUEST:
                 processBadResponse(out);
@@ -76,7 +78,7 @@ public class ResponseProcessor {
         }
     }
 
-    void processPost(ArrayList<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
+    public void processPost(List<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
 
         String requestURI = http_req.get(0).split(" ")[1];
 
@@ -87,7 +89,7 @@ public class ResponseProcessor {
         responseProcessor.processOkResponse(out, "");
     }
 
-    void processUploadFile(ArrayList<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
+    public void processUploadFile(List<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
 
         char[] data = payload.getData();
 
@@ -110,9 +112,9 @@ public class ResponseProcessor {
 
         String stringData = String.valueOf(data, 0, data.length);
 
-        int contentDispozitionStart = stringData.indexOf("Content-Disposition: ");
-        int contentDispozitionEnd = stringData.indexOf("\r\n", contentDispozitionStart);
-        String dispozitionHeader = stringData.substring(contentDispozitionStart, contentDispozitionEnd);
+        int contentDispositionStart = stringData.indexOf("Content-Disposition: ");
+        int contentDispositionEnd = stringData.indexOf("\r\n", contentDispositionStart);
+        String dispositionHeader = stringData.substring(contentDispositionStart, contentDispositionEnd);
 
         int contentTypeStart = stringData.indexOf("Content-Type: ");
         int contentTypeEnd = stringData.indexOf("\r\n", contentTypeStart);
@@ -122,7 +124,7 @@ public class ResponseProcessor {
         int dataEnd = stringData.indexOf(endBoundary) - 1;
         String d = stringData.substring(dataStart, dataEnd);
 
-        String fileName = getFileName(dispozitionHeader);
+        String fileName = getFileName(dispositionHeader);
 
         FileOutputStream fos = new FileOutputStream(storageRoot + uploadDir + File.separator + fileName);
         fos.write(d.getBytes());
@@ -145,7 +147,7 @@ public class ResponseProcessor {
         }
     }
 
-    void processGet(ArrayList<String> http_req, OutputStream os) throws IOException {
+    public void processGet(List<String> http_req, OutputStream os) throws IOException {
 
         String fileName;
         fileName = http_req.get(0).split(" ")[1];
@@ -191,7 +193,7 @@ public class ResponseProcessor {
         }
     }
 
-    void processBadResponse(OutputStream o) throws IOException {
+    public void processBadResponse(OutputStream o) throws IOException {
         responseProcessor.processBadResponse(o, "");
     }
 
@@ -215,7 +217,7 @@ public class ResponseProcessor {
         return body.toString();
     }
 
-    void getHeadersAndPayload(InputStream is, ArrayList<String> http_req, DataWrapper data) throws IOException {
+    void getHeadersAndPayload(InputStream is, List<String> http_req, DataWrapper data) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
 
         boolean isContainData = false;
@@ -246,4 +248,7 @@ public class ResponseProcessor {
         }
     }
 
+    public List<String> getHttp_req() {
+        return http_req;
+    }
 }

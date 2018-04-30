@@ -8,28 +8,28 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.kru13.httpserver.SocketServer;
+import com.kru13.httpserver.StatisticManager;
 import com.kru13.httpserver.util.NotificationUtil;
 
 public class HttpServerService extends IntentService {
 
     public static final String HTTP_SERVER_SERVICE_NAME = "HttpServerService";
-    private SocketServer s;
+    private SocketServer socketServer;
     private NotificationManager notificationManager;
     private Context context;
+    private StatisticManager statisticManager;
 
-    /**
-     * Creates an IntentService.  Invoked by your subclass's constructor.
-     */
     public HttpServerService() {
         super(HTTP_SERVER_SERVICE_NAME);
     }
 
-
     @Override
     protected void onHandleIntent(Intent intent) {
-        this.s = new SocketServer(this);
+        this.socketServer = new SocketServer(this);
+        this.statisticManager = new StatisticManager(this.socketServer.getClients());
+        this.statisticManager.start();
         try {
-            this.s.run();
+            this.socketServer.start();
         } catch (InterruptedException e) {
             Log.d(HTTP_SERVER_SERVICE_NAME, "interrupted exception");
             this.stopSelf();
@@ -51,13 +51,14 @@ public class HttpServerService extends IntentService {
 
     @Override
     public void onDestroy() {
+        super.onDestroy();
         closeSocket();
         Toast.makeText(this, "Service HTTP Server has been stopped and will be destroyed", Toast.LENGTH_LONG).show();
-        super.onDestroy();
+        this.statisticManager.cancel();
     }
 
     private void closeSocket() {
-        this.s.close();
+        this.socketServer.close();
     }
 
     public void createNotification(String content) {

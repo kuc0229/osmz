@@ -1,22 +1,25 @@
-package com.kru13.httpserver;
+package com.kru13.httpserver.event;
 
 import android.util.Log;
 
-import com.kru13.httpserver.service.HttpServerService;
+import com.kru13.httpserver.http.ResponseProcessor;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.List;
 
 public class RequestEvent extends Thread {
 
     private final Socket socket;
     private final ResponseProcessor responseProcessor;
     private boolean complete;
+    private boolean issued;
 
     public RequestEvent(Socket socket) {
         this.socket = socket;
-        complete = false;
-        responseProcessor = new ResponseProcessor();
+        this.complete = false;
+        this.issued = false;
+        this.responseProcessor = new ResponseProcessor();
     }
 
     @Override
@@ -50,5 +53,17 @@ public class RequestEvent extends Thread {
 
     public Socket getSocket() {
         return socket;
+    }
+
+    public boolean isIssued() {
+        return issued;
+    }
+
+    public void setIssued(boolean issued) {
+        this.issued = issued;
+    }
+
+    public List<String> getHttpHeaders() {
+        return this.responseProcessor.getHttp_req();
     }
 }
