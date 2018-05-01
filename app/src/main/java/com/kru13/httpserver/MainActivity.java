@@ -40,9 +40,9 @@ public class MainActivity extends Activity implements OnClickListener, Handler.C
                 if (msg.obj instanceof StatisticData) {
                     StatisticData data = (StatisticData) msg.obj;
                     updateStatistic(data);
-                    Log.d("MAIN ACTIVITY", "received message " + msg.obj);
+//                    Log.d("MAIN ACTIVITY", "received message " + msg.obj);
                 } else {
-                    Log.d("MAIN ACTIVITY", "received unknown message " + msg.obj);
+//                    Log.d("MAIN ACTIVITY", "received unknown message " + msg.obj);
                 }
             }
         };

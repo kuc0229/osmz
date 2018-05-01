@@ -88,4 +88,19 @@ public class HttpResponseProcessor {
         out.flush();
     }
 
+    static String createHtmlBody(String data, boolean preformatted) {
+        StringBuilder builder = new StringBuilder(1000);
+        builder.append("<!DOCTYPE html>");
+        builder.append("<html>");
+        builder.append("<body>");
+        if (preformatted) {
+            builder.append("<pre>");
+        }
+        builder.append(data);
+        if (preformatted) {
+            builder.append("</pre>");
+        }
+        builder.append("</body></html>");
+        return builder.toString();
+    }
 }

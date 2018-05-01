@@ -7,6 +7,8 @@ import com.kru13.httpserver.model.DataWrapper;
 import com.kru13.httpserver.enums.HttpStatus;
 import com.kru13.httpserver.http.HttpResponseProcessor;
 
+import org.apache.http.protocol.HttpProcessor;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -15,8 +17,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class ResponseProcessor {
 
@@ -82,8 +86,78 @@ public class ResponseProcessor {
         if ("/uploadFile".equals(requestURI)) {
             processUploadFile(http_req, payload, out);
         }
+    }
 
-        HttpResponseProcessor.processOkResponse(out, "");
+    private void processCommand(String command, OutputStream out) throws IOException {
+
+        List<String> splittedCommand = parseCommand(command);
+        Log.d("RESPONSE PROCESSOR", "Parsed command " + splittedCommand);
+
+        try {
+            Process start = new ProcessBuilder(splittedCommand).start();
+            int retCode = start.waitFor();
+            int available = start.getInputStream().available();
+            byte[] buffer = new byte[available];
+            int read = start.getInputStream().read(buffer, 0, available);
+            String data;
+            if (read > 0) {
+                data = new String(buffer);
+                data += "\n\nExit code: " + retCode;
+                HttpResponseProcessor.processOkResponse(out, HttpResponseProcessor.createHtmlBody(data, true));
+            } else {
+                data = "No data.\n\nExit code: " + retCode;
+                HttpResponseProcessor.processOkResponse(out, HttpResponseProcessor.createHtmlBody(data, true));
+            }
+        } catch (IOException e) {
+            Log.d("RESPONSE PROCESSOR", "error during process command " + e);
+            HttpResponseProcessor.processBadResponse(out, HttpResponseProcessor.createHtmlBody("Error " + e, false));
+        } catch (InterruptedException e) {
+            Log.d("RESPONSE PROCESSOR", "interrupted process command " + e);
+            HttpResponseProcessor.processBadResponse(out, HttpResponseProcessor.createHtmlBody("Error " + e, false));
+        }
+    }
+
+    private static List<String> parseCommand(String command) {
+        List<String> commandSplited = new ArrayList<String>(10);
+
+        StringBuilder buffer = new StringBuilder();
+        boolean waitForDelimiter = false;
+
+        for (int i = 0; i < command.length(); i++) {
+            char current = command.charAt(i);
+
+            switch (current) {
+                case ' ':
+                    if (waitForDelimiter) {
+                        buffer.append(' ');
+                        continue;
+                    } else {
+                        if (buffer.length() > 0) {
+                            commandSplited.add(buffer.toString());
+                            buffer = new StringBuilder();
+                        }
+                        break;
+                    }
+                case '"':
+                    if (waitForDelimiter) {
+                        commandSplited.add(buffer.toString());
+                        buffer = new StringBuilder();
+                        waitForDelimiter = false;
+                    } else {
+                        waitForDelimiter = true;
+                        buffer = new StringBuilder();
+                    }
+                    break;
+                default:
+                    buffer.append(current);
+            }
+
+        }
+
+        if (buffer.length() > 0) {
+            commandSplited.add(buffer.toString());
+        }
+        return commandSplited;
     }
 
     public void processUploadFile(List<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
@@ -149,8 +223,26 @@ public class ResponseProcessor {
         }
     }
 
-    public void processGet(List<String> http_req, OutputStream os) throws IOException {
+    public void processGet(List<String> http_req, OutputStream out) throws IOException {
 
+        String requestURI = http_req.get(0).split(" ")[1];
+
+        if (requestURI.startsWith("/cgi-bin/")) {
+            String[] parse = requestURI.split("/cgi-bin/");
+            if (!(parse.length > 1)) {
+                HttpResponseProcessor.processBadResponse(out, "Bad URL. Usage /cgi-bin/&lt;command&gt;");
+                return;
+            }
+            String command = URLDecoder.decode(parse[1], "UTF-8");
+            processCommand(command, out);
+            return;
+        }
+
+        processGetFile(http_req, out);
+
+    }
+
+    private void processGetFile(List<String> http_req, OutputStream os) throws IOException {
         String fileName;
         fileName = http_req.get(0).split(" ")[1];
 
