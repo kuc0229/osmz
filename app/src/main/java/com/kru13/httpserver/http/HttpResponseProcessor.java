@@ -28,7 +28,7 @@ public class HttpResponseProcessor {
         return type;
     }
 
-    void processOkResponse(OutputStream os, File f) throws IOException {
+    static void processOkResponse(OutputStream os, File f) throws IOException {
         Log.d("HTTP", "200 OK");
         BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
 
@@ -39,7 +39,7 @@ public class HttpResponseProcessor {
         out.flush();
     }
 
-    void processOkResponse(OutputStream os, String body) throws IOException {
+    static void processOkResponse(OutputStream os, String body) throws IOException {
         Log.d("HTTP", "200 OK");
         BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
 
@@ -51,7 +51,7 @@ public class HttpResponseProcessor {
         out.flush();
     }
 
-    void processBadResponse(OutputStream o, String msg) throws IOException {
+    static void processBadResponse(OutputStream o, String msg) throws IOException {
 
         Log.d("HTTP", "400 Bad request");
         BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));
@@ -67,7 +67,7 @@ public class HttpResponseProcessor {
         out.flush();
     }
 
-    void writeFileToResponse(OutputStream os, File targetFile) throws IOException {
+    static void writeFileToResponse(OutputStream os, File targetFile) throws IOException {
         FileInputStream fis = new FileInputStream(targetFile);
         byte buffer[] = new byte[1024];
         int len;
@@ -78,7 +78,7 @@ public class HttpResponseProcessor {
         os.flush();
     }
 
-    void processNotFoundResponse(OutputStream os, File targetFile) throws IOException {
+    static void processNotFoundResponse(OutputStream os, File targetFile) throws IOException {
         Log.d("HTTP", "400 NotFound");
         BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
 

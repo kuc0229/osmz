@@ -24,10 +24,8 @@ public class ResponseProcessor {
     public final String storageRoot = Environment.getExternalStorageDirectory().getPath();
 
     private List<String> http_req;
-    private HttpResponseProcessor responseProcessor;
 
     public ResponseProcessor() {
-        this.responseProcessor = new HttpResponseProcessor();
     }
 
     public void processRequest(Socket s) throws IOException {
@@ -85,7 +83,7 @@ public class ResponseProcessor {
             processUploadFile(http_req, payload, out);
         }
 
-        responseProcessor.processOkResponse(out, "");
+        HttpResponseProcessor.processOkResponse(out, "");
     }
 
     public void processUploadFile(List<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
@@ -103,8 +101,8 @@ public class ResponseProcessor {
         }
 
         if (endBoundary == null) {
-            Log.d("RESPONSE PROCCESSOR", "could not found boundary");
-            responseProcessor.processBadResponse(out, "Error during processing payload.");
+            Log.d("RESPONSE PROCESSOR", "could not found boundary");
+            HttpResponseProcessor.processBadResponse(out, "Error during processing payload.");
             return;
         }
 
@@ -118,8 +116,14 @@ public class ResponseProcessor {
         int contentTypeEnd = stringData.indexOf("\r\n", contentTypeStart);
         String contentTypeHeader = stringData.substring(contentTypeStart, contentTypeEnd);
 
-        int dataStart = stringData.indexOf("\r\n\r\n")+4;
+        int dataStart = stringData.indexOf("\r\n\r\n") + 4;
         int dataEnd = stringData.indexOf(endBoundary, dataStart);
+        if (dataEnd > -1) {
+            Log.d("RESPONSE PROCESSOR", "data start:" + dataStart + " data end: " + dataEnd);
+        } else {
+            Log.d("RESPONSE PROCESSOR", "data end boundary not found");
+            dataEnd = stringData.length() - 2 - endBoundary.length();
+        }
         String d = stringData.substring(dataStart, dataEnd);
 
         String fileName = getFileName(dispositionHeader);
@@ -128,7 +132,7 @@ public class ResponseProcessor {
         fos.write(d.getBytes());
         fos.flush();
 
-        responseProcessor.processOkResponse(out,
+        HttpResponseProcessor.processOkResponse(out,
                 "<html><body><p>Upload successful</p><p><a href='/'>Back to root directory</a></p></body></html>");
     }
 
@@ -167,8 +171,8 @@ public class ResponseProcessor {
 
                 // check if exists index.htm in directory otherwise listing directory
                 if (attemptIndex.exists() && !attemptIndex.isDirectory()) {
-                    responseProcessor.processOkResponse(os, attemptIndex);
-                    responseProcessor.writeFileToResponse(os, attemptIndex);
+                    HttpResponseProcessor.processOkResponse(os, attemptIndex);
+                    HttpResponseProcessor.writeFileToResponse(os, attemptIndex);
 
                 } else {
                     Log.d("RESPONSE", "directory listing");
@@ -176,23 +180,23 @@ public class ResponseProcessor {
 
                     // check if target directory exist
                     if (!directory.exists()) {
-                        responseProcessor.processNotFoundResponse(os, directory);
+                        HttpResponseProcessor.processNotFoundResponse(os, directory);
                     }
 
                     String httpBody = createDirectoryListing(directory, Environment.getExternalStorageDirectory().getPath());
-                    responseProcessor.processOkResponse(os, httpBody);
+                    HttpResponseProcessor.processOkResponse(os, httpBody);
                 }
             } else {
-                responseProcessor.processOkResponse(os, targetFile);
-                responseProcessor.writeFileToResponse(os, targetFile);
+                HttpResponseProcessor.processOkResponse(os, targetFile);
+                HttpResponseProcessor.writeFileToResponse(os, targetFile);
             }
         } else {
-            responseProcessor.processNotFoundResponse(os, targetFile);
+            HttpResponseProcessor.processNotFoundResponse(os, targetFile);
         }
     }
 
     public void processBadResponse(OutputStream o) throws IOException {
-        responseProcessor.processBadResponse(o, "");
+        HttpResponseProcessor.processBadResponse(o, "");
     }
 
     String createDirectoryListing(File directory, String rootPath) {
