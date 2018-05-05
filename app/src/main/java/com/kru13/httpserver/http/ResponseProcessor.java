@@ -5,8 +5,11 @@ import android.util.Log;
 
 import com.kru13.httpserver.enums.HttpStatus;
 import com.kru13.httpserver.model.DataWrapper;
+import com.kru13.httpserver.service.HttpServerService;
+import com.kru13.httpserver.service.ScreenshotService;
 
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -18,14 +21,17 @@ import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
 
+
 public class ResponseProcessor {
 
     public final String uploadDir = File.separator + "Upload";
     public final String storageRoot = Environment.getExternalStorageDirectory().getPath();
 
+    private final HttpServerService service;
     private List<String> http_req;
 
-    public ResponseProcessor() {
+    public ResponseProcessor(HttpServerService systemService) {
+        this.service = systemService;
     }
 
     public void processRequest(Socket s) throws IOException {
@@ -257,7 +263,24 @@ public class ResponseProcessor {
 
     }
 
-    private void makeScreenCap(OutputStream out) {
+    private synchronized void makeScreenCap(OutputStream out) throws IOException {
+        service.createSnapshot();
+
+        // synchronized time
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException e) {
+            Log.d("RESPONSE PROCESSOR", "sync interrupted");
+        }
+
+        File f = new File(service.getExternalFilesDir(null), ScreenshotService.SCREEN_FILE_NAME);
+
+        if (f.exists()) {
+            HttpResponseProcessor.processOkResponseWithImage(out, f);
+        } else {
+            HttpResponseProcessor.internalServerError(out, "Error: Screen image not found");
+        }
+
     }
 
     private void processGetFile(List<String> http_req, OutputStream os) throws IOException {

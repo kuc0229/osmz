@@ -3,6 +3,8 @@ package com.kru13.httpserver.http;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
 
+import com.kru13.httpserver.util.ImageUtil;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
@@ -42,6 +44,23 @@ public class HttpResponseProcessor {
     static void processOkResponse(OutputStream os, String body) throws IOException {
         Log.d("HTTP", "200 OK");
         BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
+
+        out.write("HTTP/1.0 200 OK\n");
+        out.write("Content-Type: text/html\n");
+        out.write("Content-Length: " + body.length() + "\n");
+        out.write("\n");
+        out.write(body);
+        out.flush();
+    }
+
+
+    public static void processOkResponseWithImage(OutputStream os, File f) throws IOException {
+        Log.d("HTTP", "200 OK");
+        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
+
+        String imageBase64 = ImageUtil.convertToBase64(f);
+        String imageHtml = String.format("<img src=\"data:image/png;base64, %s\" alt=\"screen\" />", imageBase64);
+        String body = createHtmlBody(imageHtml, false);
 
         out.write("HTTP/1.0 200 OK\n");
         out.write("Content-Type: text/html\n");

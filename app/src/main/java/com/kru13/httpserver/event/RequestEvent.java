@@ -3,6 +3,7 @@ package com.kru13.httpserver.event;
 import android.util.Log;
 
 import com.kru13.httpserver.http.ResponseProcessor;
+import com.kru13.httpserver.service.HttpServerService;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -12,17 +13,20 @@ public class RequestEvent extends Thread {
 
     private final Socket socket;
     private final ResponseProcessor responseProcessor;
+    private final HttpServerService service;
 
     private boolean complete;
     private boolean issued;
     private boolean proccessing;
 
-    public RequestEvent(Socket socket) {
+
+    public RequestEvent(Socket socket, HttpServerService systemService) {
         this.socket = socket;
         this.complete = false;
         this.issued = false;
         this.proccessing = true;
-        this.responseProcessor = new ResponseProcessor();
+        this.service = systemService;
+        this.responseProcessor = new ResponseProcessor(systemService);
     }
 
     @Override

@@ -44,7 +44,7 @@ public class SocketServer {
                 Socket s = serverSocket.accept();
                 Log.d("Socket SERVER", "Socket Accepted #" + s.hashCode());
 
-                RequestEvent requestEvent = new RequestEvent(s);
+                RequestEvent requestEvent = new RequestEvent(s, systemService);
                 requestEvent.start();
 
                 synchronized (clients) {
