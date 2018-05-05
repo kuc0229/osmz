@@ -29,7 +29,7 @@ public class SocketServer {
         clients = new ArrayList<RequestEvent>();
     }
 
-    public void start() {
+    public void listen() {
         try {
             Log.d("SERVER", "Creating Socket");
             systemService.createNotification("Create socket...");

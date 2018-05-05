@@ -50,7 +50,7 @@ public class StatisticManager extends Thread {
     @Override
     public void run() {
         running = true;
-        Log.d("STATISTIC MANAGER", "start service");
+        Log.d("STATISTIC MANAGER", "listen service");
         int activeClients;
         int transferredBytes;
         int requestCount;

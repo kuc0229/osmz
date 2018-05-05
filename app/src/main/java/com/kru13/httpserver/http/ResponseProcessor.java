@@ -3,11 +3,8 @@ package com.kru13.httpserver.http;
 import android.os.Environment;
 import android.util.Log;
 
-import com.kru13.httpserver.model.DataWrapper;
 import com.kru13.httpserver.enums.HttpStatus;
-import com.kru13.httpserver.http.HttpResponseProcessor;
-
-import org.apache.http.protocol.HttpProcessor;
+import com.kru13.httpserver.model.DataWrapper;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -20,7 +17,6 @@ import java.net.Socket;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class ResponseProcessor {
 
@@ -96,17 +92,30 @@ public class ResponseProcessor {
         try {
             Process start = new ProcessBuilder(splittedCommand).start();
             int retCode = start.waitFor();
-            int available = start.getInputStream().available();
-            byte[] buffer = new byte[available];
-            int read = start.getInputStream().read(buffer, 0, available);
-            String data;
-            if (read > 0) {
-                data = new String(buffer);
-                data += "\n\nExit code: " + retCode;
-                HttpResponseProcessor.processOkResponse(out, HttpResponseProcessor.createHtmlBody(data, true));
+
+            if (retCode == 0) {
+                int available = start.getInputStream().available();
+                byte[] buffer = new byte[available];
+                int read = start.getInputStream().read(buffer, 0, available);
+                String data;
+                if (read > 0) {
+                    data = new String(buffer);
+                    data += "\n\nExit code: " + retCode;
+                    HttpResponseProcessor.processOkResponse(out, HttpResponseProcessor.createHtmlBody(data, true));
+                } else {
+                    data = "No data.\n\nExit code: " + retCode;
+                    HttpResponseProcessor.processOkResponse(out, HttpResponseProcessor.createHtmlBody(data, true));
+                }
             } else {
-                data = "No data.\n\nExit code: " + retCode;
-                HttpResponseProcessor.processOkResponse(out, HttpResponseProcessor.createHtmlBody(data, true));
+                int available = start.getErrorStream().available();
+                byte[] buffer = new byte[available];
+                int read = start.getErrorStream().read(buffer, 0, available);
+                String data;
+                if (read > 0) {
+                    data = new String(buffer);
+                    data += "\n\nExit code: " + retCode;
+                    HttpResponseProcessor.processOkResponse(out, HttpResponseProcessor.createHtmlBody(data, true));
+                }
             }
         } catch (IOException e) {
             Log.d("RESPONSE PROCESSOR", "error during process command " + e);
@@ -238,8 +247,17 @@ public class ResponseProcessor {
             return;
         }
 
+        if (requestURI.startsWith("/screencap/")) {
+            makeScreenCap(out);
+            return;
+
+        }
+
         processGetFile(http_req, out);
 
+    }
+
+    private void makeScreenCap(OutputStream out) {
     }
 
     private void processGetFile(List<String> http_req, OutputStream os) throws IOException {

@@ -16,7 +16,7 @@ import android.widget.TextView;
 import com.kru13.httpserver.model.StatisticData;
 import com.kru13.httpserver.service.HttpServerService;
 
-public class MainActivity extends Activity implements OnClickListener, Handler.Callback {
+public class MainActivity extends Activity implements OnClickListener{
 
     private Intent httpServerService;
     private StatisticManager statisticManager;
@@ -82,10 +82,5 @@ public class MainActivity extends Activity implements OnClickListener, Handler.C
                 statisticManager.cancel();
             }
         }
-    }
-
-    @Override
-    public boolean handleMessage(Message msg) {
-        return false;
     }
 }

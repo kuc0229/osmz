@@ -54,9 +54,6 @@ public class RequestEvent extends Thread {
         return complete;
     }
 
-    public Socket getSocket() {
-        return socket;
-    }
 
     public boolean isIssued() {
         return issued;

@@ -28,7 +28,7 @@ public class HttpServerService extends IntentService {
         this.socketServer = new SocketServer(this);
         this.statisticManager = new StatisticManager(this.socketServer.getClients());
         this.statisticManager.start();
-        this.socketServer.start();
+        this.socketServer.listen();
     }
 
     @Override

@@ -103,4 +103,16 @@ public class HttpResponseProcessor {
         builder.append("</body></html>");
         return builder.toString();
     }
+
+    public static void internalServerError(OutputStream o, String body) throws IOException {
+        Log.d("HTTP", "500 Internal Server Error");
+        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));
+
+        out.write("HTTP/1.0 500 Internal Server Error\n");
+        out.write("Content-Type: text/html\n");
+        out.write("Content-Length: " + body.length() + "\n");
+        out.write("\n");
+        out.write(body);
+        out.flush();
+    }
 }
