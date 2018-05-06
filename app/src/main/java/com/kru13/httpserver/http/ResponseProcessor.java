@@ -7,7 +7,6 @@ import com.kru13.httpserver.enums.HttpStatus;
 import com.kru13.httpserver.event.RequestEvent;
 import com.kru13.httpserver.exceptions.ExecuteCommandException;
 import com.kru13.httpserver.model.DataWrapper;
-import com.kru13.httpserver.model.ExecuteCommandWrapper;
 import com.kru13.httpserver.service.HttpServerService;
 import com.kru13.httpserver.service.ScreenshotService;
 import com.kru13.httpserver.util.CommandUtil;
@@ -65,7 +64,6 @@ public class ResponseProcessor extends Thread {
         InputStream in = s.getInputStream();
         OutputStream out = s.getOutputStream();
 
-//        try {
         DataWrapper payload = new DataWrapper();
         List<String> httpHeaders = new ArrayList<>();
 
@@ -85,12 +83,6 @@ public class ResponseProcessor extends Thread {
         if (httpMethod.contains("POST")) {
             processResponse(HttpStatus.POST, httpHeaders, payload, out);
         }
-
-//        } finally {
-//            if (in != null) {
-//                in.close();
-//            }
-//        }
     }
 
     private void processResponse(HttpStatus httpStatus, List<String> httpHeaders, DataWrapper payload, OutputStream out)

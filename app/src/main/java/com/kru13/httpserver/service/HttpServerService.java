@@ -11,6 +11,8 @@ import com.kru13.httpserver.SocketServer;
 import com.kru13.httpserver.StatisticManager;
 import com.kru13.httpserver.util.NotificationUtil;
 
+import java.util.Date;
+
 public class HttpServerService extends IntentService {
 
     public static final String HTTP_SERVER_SERVICE_NAME = "HttpServerService";
@@ -65,6 +67,7 @@ public class HttpServerService extends IntentService {
     }
 
     public void createScreenshot() {
+        createNotification("Create Screenshot at " + new Date());
         Intent i = new Intent(this.context, ScreenshotActivity.class);
         i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(i);

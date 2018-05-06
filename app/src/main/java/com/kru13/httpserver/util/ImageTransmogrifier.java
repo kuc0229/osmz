@@ -1,15 +1,15 @@
-/***
- Copyright (c) 2015 CommonsWare, LLC
- Licensed under the Apache License, Version 2.0 (the "License"); you may not
- use this file except in compliance with the License. You may obtain a copy
- of the License at http://www.apache.org/licenses/LICENSE-2.0. Unless required
- by applicable law or agreed to in writing, software distributed under the
- License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
- OF ANY KIND, either express or implied. See the License for the specific
- language governing permissions and limitations under the License.
-
- Covered in detail in the book _The Busy Coder's Guide to Android Development_
- https://commonsware.com/Android
+/**
+ * Copyright (c) 2015 CommonsWare, LLC
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy
+ * of the License at http://www.apache.org/licenses/LICENSE-2.0. Unless required
+ * by applicable law or agreed to in writing, software distributed under the
+ * License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+ * OF ANY KIND, either express or implied. See the License for the specific
+ * language governing permissions and limitations under the License.
+ * <p>
+ * Covered in detail in the book _The Busy Coder's Guide to Android Development_
+ * https://commonsware.com/Android
  */
 
 package com.kru13.httpserver.util;
@@ -53,7 +53,9 @@ public class ImageTransmogrifier implements ImageReader.OnImageAvailableListener
         this.width = width;
         this.height = height;
 
-        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
+        imageReader = ImageReader.newInstance(width, height,
+                PixelFormat.RGBA_8888, 2);
+        imageReader.setOnImageAvailableListener(this, svc.getHandler());
     }
 
     @Override
@@ -71,7 +73,6 @@ public class ImageTransmogrifier implements ImageReader.OnImageAvailableListener
             if (latestBitmap == null ||
                     latestBitmap.getWidth() != bitmapWidth ||
                     latestBitmap.getHeight() != height) {
-
                 if (latestBitmap != null) {
                     latestBitmap.recycle();
                 }
@@ -82,10 +83,9 @@ public class ImageTransmogrifier implements ImageReader.OnImageAvailableListener
 
             latestBitmap.copyPixelsFromBuffer(buffer);
 
-            image.close();
-
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            Bitmap cropped = Bitmap.createBitmap(latestBitmap, 0, 0, width, height);
+            Bitmap cropped = Bitmap.createBitmap(latestBitmap, 0, 0,
+                    width, height);
 
             cropped.compress(Bitmap.CompressFormat.PNG, 100, baos);
 
@@ -96,14 +96,14 @@ public class ImageTransmogrifier implements ImageReader.OnImageAvailableListener
     }
 
     public Surface getSurface() {
-        return imageReader.getSurface();
+        return (imageReader.getSurface());
     }
 
     public int getWidth() {
-        return width;
+        return (width);
     }
 
     public int getHeight() {
-        return height;
+        return (height);
     }
 }

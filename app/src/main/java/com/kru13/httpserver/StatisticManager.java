@@ -11,7 +11,6 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -139,25 +138,6 @@ public class StatisticManager extends Thread {
 
         return statisticData;
     }
-
-//    private int parseContentLength(RequestEvent r) {
-//        int contentLength = 0;
-//
-//        if (r.getHttpHeaders() != null) {
-//            for (String h : r.getHttpHeaders()) {
-//                if (h.startsWith("Content-Length: ")) {
-//                    try {
-//                        contentLength = Integer.parseInt(h.split("Content-Length: ")[1]);
-//                    } catch (Exception e) {
-//                        Log.d("STATISTIC MANAGER", "can not parse " + h + " header");
-//                    }
-//                    break;
-//                }
-//            }
-//        }
-//
-//        return contentLength;
-//    }
 
     private synchronized void updateData(int activeClients, int transferredBytes, int requestCount) {
 

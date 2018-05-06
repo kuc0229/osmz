@@ -25,13 +25,11 @@ public class SocketServer {
     private final HttpServerService service;
     private final List<RequestEvent> clients;
     private final Semaphore available;
-//    private final ResponseProcessor responseProcessor;
 
     public SocketServer(HttpServerService httpServerService) {
         this.service = httpServerService;
         this.available = new Semaphore(MAX_CLIENTS, true);
         this.clients = new ArrayList<>();
-//        this.responseProcessor = new ResponseProcessor(httpServerService);
     }
 
     public void listen() {

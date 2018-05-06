@@ -2,7 +2,6 @@ package com.kru13.httpserver.util;
 
 import android.app.Notification;
 import android.content.Context;
-import android.content.Intent;
 
 import com.kru13.httpserver.R;
 
