@@ -54,7 +54,7 @@ public class HttpResponseProcessor {
     }
 
 
-    public static void processOkResponseWithImage(OutputStream os, File f) throws IOException {
+    static void processOkResponseWithImage(OutputStream os, File f) throws IOException {
         Log.d("HTTP", "200 OK");
         BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
 

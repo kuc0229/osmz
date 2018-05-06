@@ -4,12 +4,15 @@ import android.os.Environment;
 import android.util.Log;
 
 import com.kru13.httpserver.enums.HttpStatus;
+import com.kru13.httpserver.event.RequestEvent;
+import com.kru13.httpserver.exceptions.ExecuteCommandException;
 import com.kru13.httpserver.model.DataWrapper;
+import com.kru13.httpserver.model.ExecuteCommandWrapper;
 import com.kru13.httpserver.service.HttpServerService;
 import com.kru13.httpserver.service.ScreenshotService;
+import com.kru13.httpserver.util.CommandUtil;
 
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -19,163 +22,118 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 
-public class ResponseProcessor {
+public class ResponseProcessor extends Thread {
 
     public final String uploadDir = File.separator + "Upload";
     public final String storageRoot = Environment.getExternalStorageDirectory().getPath();
 
     private final HttpServerService service;
-    private List<String> http_req;
+    private final RequestEvent requestEvent;
 
-    public ResponseProcessor(HttpServerService systemService) {
-        this.service = systemService;
+    public ResponseProcessor(HttpServerService httpServerService, RequestEvent requestEvent) {
+        this.service = httpServerService;
+        this.requestEvent = requestEvent;
     }
 
-    public void processRequest(Socket s) throws IOException {
+    @Override
+    public void run() {
+        Log.d("REQUEST EVENT", "Create request event with socket #" +
+                requestEvent.getSocket().hashCode() + " service by " + Thread.currentThread().getName());
+
+        try {
+            processRequest(this.requestEvent.getSocket());
+        } catch (IOException e) {
+            Log.e("Socket", "error during process request " + e);
+        } finally {
+            try {
+                this.requestEvent.getSocket().close();
+                Log.d("REQUEST EVENT", "Socket #" + this.requestEvent.getSocket().hashCode() + " closed");
+            } catch (IOException e) {
+                Log.d("REQUEST EVENT", "Cannot close socket #"
+                        + this.requestEvent.getSocket().hashCode() + " " + e);
+            }
+            requestEvent.setComplete(true);
+        }
+    }
+
+    private void processRequest(Socket s) throws IOException {
 
         InputStream in = s.getInputStream();
         OutputStream out = s.getOutputStream();
 
-        try {
-            DataWrapper payload = new DataWrapper();
-            http_req = new ArrayList<String>();
+//        try {
+        DataWrapper payload = new DataWrapper();
+        List<String> httpHeaders = new ArrayList<>();
 
-            getHeadersAndPayload(in, http_req, payload);
+        getHeadersAndPayload(in, httpHeaders, payload);
 
-            if (http_req.isEmpty()) {
-                processResponse(HttpStatus.BAD_REQUEST, http_req, payload, out);
-                return;
-            }
-
-            String httpMethod = http_req.get(0);
-
-            if (httpMethod.contains("GET")) {
-                processResponse(HttpStatus.GET, http_req, payload, out);
-            }
-
-            if (httpMethod.contains("POST")) {
-                processResponse(HttpStatus.POST, http_req, payload, out);
-            }
-
-        } finally {
-            if (in != null) {
-                in.close();
-            }
+        if (httpHeaders.isEmpty()) {
+            processResponse(HttpStatus.BAD_REQUEST, httpHeaders, payload, out);
+            return;
         }
+
+        String httpMethod = httpHeaders.get(0);
+
+        if (httpMethod.contains("GET")) {
+            processResponse(HttpStatus.GET, httpHeaders, payload, out);
+        }
+
+        if (httpMethod.contains("POST")) {
+            processResponse(HttpStatus.POST, httpHeaders, payload, out);
+        }
+
+//        } finally {
+//            if (in != null) {
+//                in.close();
+//            }
+//        }
     }
 
-    public void processResponse(HttpStatus httpStatus, List<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
+    private void processResponse(HttpStatus httpStatus, List<String> httpHeaders, DataWrapper payload, OutputStream out)
+            throws IOException {
         switch (httpStatus) {
             case BAD_REQUEST:
                 processBadResponse(out);
                 break;
             case GET:
-                processGet(http_req, out);
+                processGet(httpHeaders, out);
                 break;
             case POST:
-                processPost(http_req, payload, out);
-
+                processPost(httpHeaders, payload, out);
         }
     }
 
-    public void processPost(List<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
+    private void processPost(List<String> httpHeaders, DataWrapper payload, OutputStream out) throws IOException {
 
-        String requestURI = http_req.get(0).split(" ")[1];
+        String requestURI = httpHeaders.get(0).split(" ")[1];
 
         if ("/uploadFile".equals(requestURI)) {
-            processUploadFile(http_req, payload, out);
+            processUploadFile(httpHeaders, payload, out);
+            return;
         }
     }
 
     private void processCommand(String command, OutputStream out) throws IOException {
 
-        List<String> splittedCommand = parseCommand(command);
+        List<String> splittedCommand = CommandUtil.parseCommand(command);
         Log.d("RESPONSE PROCESSOR", "Parsed command " + splittedCommand);
 
         try {
-            Process start = new ProcessBuilder(splittedCommand).start();
-            int retCode = start.waitFor();
+            String data = CommandUtil.executeCommand(splittedCommand);
+            HttpResponseProcessor.processOkResponse(out, HttpResponseProcessor.createHtmlBody(data, true));
 
-            if (retCode == 0) {
-                int available = start.getInputStream().available();
-                byte[] buffer = new byte[available];
-                int read = start.getInputStream().read(buffer, 0, available);
-                String data;
-                if (read > 0) {
-                    data = new String(buffer);
-                    data += "\n\nExit code: " + retCode;
-                    HttpResponseProcessor.processOkResponse(out, HttpResponseProcessor.createHtmlBody(data, true));
-                } else {
-                    data = "No data.\n\nExit code: " + retCode;
-                    HttpResponseProcessor.processOkResponse(out, HttpResponseProcessor.createHtmlBody(data, true));
-                }
-            } else {
-                int available = start.getErrorStream().available();
-                byte[] buffer = new byte[available];
-                int read = start.getErrorStream().read(buffer, 0, available);
-                String data;
-                if (read > 0) {
-                    data = new String(buffer);
-                    data += "\n\nExit code: " + retCode;
-                    HttpResponseProcessor.processOkResponse(out, HttpResponseProcessor.createHtmlBody(data, true));
-                }
-            }
-        } catch (IOException e) {
+        } catch (ExecuteCommandException e) {
             Log.d("RESPONSE PROCESSOR", "error during process command " + e);
-            HttpResponseProcessor.processBadResponse(out, HttpResponseProcessor.createHtmlBody("Error " + e, false));
-        } catch (InterruptedException e) {
-            Log.d("RESPONSE PROCESSOR", "interrupted process command " + e);
-            HttpResponseProcessor.processBadResponse(out, HttpResponseProcessor.createHtmlBody("Error " + e, false));
+            HttpResponseProcessor.processBadResponse(out,
+                    HttpResponseProcessor.createHtmlBody("Error " + e, false));
         }
     }
 
-    private static List<String> parseCommand(String command) {
-        List<String> commandSplited = new ArrayList<String>(10);
-
-        StringBuilder buffer = new StringBuilder();
-        boolean waitForDelimiter = false;
-
-        for (int i = 0; i < command.length(); i++) {
-            char current = command.charAt(i);
-
-            switch (current) {
-                case ' ':
-                    if (waitForDelimiter) {
-                        buffer.append(' ');
-                        continue;
-                    } else {
-                        if (buffer.length() > 0) {
-                            commandSplited.add(buffer.toString());
-                            buffer = new StringBuilder();
-                        }
-                        break;
-                    }
-                case '"':
-                    if (waitForDelimiter) {
-                        commandSplited.add(buffer.toString());
-                        buffer = new StringBuilder();
-                        waitForDelimiter = false;
-                    } else {
-                        waitForDelimiter = true;
-                        buffer = new StringBuilder();
-                    }
-                    break;
-                default:
-                    buffer.append(current);
-            }
-
-        }
-
-        if (buffer.length() > 0) {
-            commandSplited.add(buffer.toString());
-        }
-        return commandSplited;
-    }
-
-    public void processUploadFile(List<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
+    private void processUploadFile(List<String> http_req, DataWrapper payload, OutputStream out) throws IOException {
 
         char[] data = payload.getData();
 
@@ -221,11 +179,13 @@ public class ResponseProcessor {
         fos.write(d.getBytes());
         fos.flush();
 
+        service.createNotification("New file " + fileName + " uploaded at " + new Date());
+
         HttpResponseProcessor.processOkResponse(out,
                 "<html><body><p>Upload successful</p><p><a href='/'>Back to root directory</a></p></body></html>");
     }
 
-    String getFileName(String dispositionHeader) {
+    private String getFileName(String dispositionHeader) {
 
         String[] split = dispositionHeader.split("filename=");
 
@@ -238,7 +198,7 @@ public class ResponseProcessor {
         }
     }
 
-    public void processGet(List<String> http_req, OutputStream out) throws IOException {
+    private void processGet(List<String> http_req, OutputStream out) throws IOException {
 
         String requestURI = http_req.get(0).split(" ")[1];
 
@@ -263,8 +223,8 @@ public class ResponseProcessor {
 
     }
 
-    private synchronized void makeScreenCap(OutputStream out) throws IOException {
-        service.createSnapshot();
+    private void makeScreenCap(OutputStream out) throws IOException {
+        service.createScreenshot();
 
         // synchronized time
         try {
@@ -276,6 +236,7 @@ public class ResponseProcessor {
         File f = new File(service.getExternalFilesDir(null), ScreenshotService.SCREEN_FILE_NAME);
 
         if (f.exists()) {
+            service.createNotification("New screenshot has been made from at " + new Date());
             HttpResponseProcessor.processOkResponseWithImage(out, f);
         } else {
             HttpResponseProcessor.internalServerError(out, "Error: Screen image not found");
@@ -328,11 +289,11 @@ public class ResponseProcessor {
         }
     }
 
-    public void processBadResponse(OutputStream o) throws IOException {
+    private void processBadResponse(OutputStream o) throws IOException {
         HttpResponseProcessor.processBadResponse(o, "");
     }
 
-    String createDirectoryListing(File directory, String rootPath) {
+    private String createDirectoryListing(File directory, String rootPath) {
         File[] files = directory.listFiles();
         StringBuilder body = new StringBuilder(1000);
         body.append("<html><body><ul>");
@@ -352,7 +313,7 @@ public class ResponseProcessor {
         return body.toString();
     }
 
-    void getHeadersAndPayload(InputStream is, List<String> http_req, DataWrapper data) throws IOException {
+    private void getHeadersAndPayload(InputStream is, List<String> http_req, DataWrapper data) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
 
         boolean isContainData = false;
@@ -367,6 +328,7 @@ public class ResponseProcessor {
 
                 if (tmp.startsWith("Content-Length:")) {
                     contentLength = Integer.parseInt(tmp.split(": ")[1]);
+                    this.requestEvent.setTransferredBytes(contentLength);
                 }
             }
         }
@@ -381,9 +343,5 @@ public class ResponseProcessor {
                 Log.d("HTTP_REQ", "Could not read request payload");
             }
         }
-    }
-
-    public List<String> getHttp_req() {
-        return http_req;
     }
 }

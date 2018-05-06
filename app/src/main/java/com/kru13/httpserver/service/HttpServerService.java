@@ -1,12 +1,10 @@
 package com.kru13.httpserver.service;
 
 import android.app.IntentService;
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
-import android.media.projection.MediaProjectionManager;
-import android.util.Log;
-import android.widget.Toast;
 
 import com.kru13.httpserver.ScreenshotActivity;
 import com.kru13.httpserver.SocketServer;
@@ -18,8 +16,8 @@ public class HttpServerService extends IntentService {
     public static final String HTTP_SERVER_SERVICE_NAME = "HttpServerService";
     private SocketServer socketServer;
     private NotificationManager notificationManager;
-    private Context context;
     private StatisticManager statisticManager;
+    private Context context;
 
     public HttpServerService() {
         super(HTTP_SERVER_SERVICE_NAME);
@@ -37,12 +35,12 @@ public class HttpServerService extends IntentService {
     public void onCreate() {
         super.onCreate();
         this.context = getApplicationContext();
-        this.notificationManager = (NotificationManager) this.context.getSystemService(Context.NOTIFICATION_SERVICE);
+        this.notificationManager =
+                (NotificationManager) this.context.getSystemService(Context.NOTIFICATION_SERVICE);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Toast.makeText(this, "Service HTTP Server has been started", Toast.LENGTH_SHORT).show();
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -50,7 +48,6 @@ public class HttpServerService extends IntentService {
     public void onDestroy() {
         super.onDestroy();
         closeSocket();
-        Toast.makeText(this, "Service HTTP Server has been stopped and will be destroyed", Toast.LENGTH_LONG).show();
         if (statisticManager != null) {
             this.statisticManager.cancel();
         }
@@ -63,11 +60,12 @@ public class HttpServerService extends IntentService {
     }
 
     public void createNotification(String content) {
-        notificationManager.notify(NotificationUtil.nextId(), NotificationUtil.makeNotification(context, HTTP_SERVER_SERVICE_NAME, content));
+        Notification n = NotificationUtil.makeNotification(this.context, HTTP_SERVER_SERVICE_NAME, content);
+        notificationManager.notify(NotificationUtil.nextId(), n);
     }
 
-    public void createSnapshot() {
-        Intent i = new Intent(getApplicationContext(), ScreenshotActivity.class);
+    public void createScreenshot() {
+        Intent i = new Intent(this.context, ScreenshotActivity.class);
         i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(i);
     }

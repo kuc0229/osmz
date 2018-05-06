@@ -10,8 +10,6 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.Window;
-import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -75,7 +73,7 @@ public class MainActivity extends Activity implements OnClickListener{
         if (v.getId() == R.id.button1) {
             this.httpServerService = new Intent(this, HttpServerService.class);
             startService(this.httpServerService);
-            StatisticManager.initilizeStorage();
+            StatisticManager.initializeStorage();
             statisticManager = new StatisticManager(handler);
             statisticManager.start();
 

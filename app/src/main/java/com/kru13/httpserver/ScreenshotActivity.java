@@ -18,7 +18,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.media.projection.MediaProjectionManager;
 import android.os.Bundle;
-import android.util.Log;
 
 import com.kru13.httpserver.service.ScreenshotService;
 
@@ -30,7 +29,7 @@ public class ScreenshotActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Log.d("ScreenshotActivity", "on create");
+        mgr = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
 
         mgr = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         startActivityForResult(mgr.createScreenCaptureIntent(), REQUEST_SCREENSHOT);
@@ -48,7 +47,6 @@ public class ScreenshotActivity extends Activity {
                 startService(i);
             }
         }
-
         finish();
     }
 }

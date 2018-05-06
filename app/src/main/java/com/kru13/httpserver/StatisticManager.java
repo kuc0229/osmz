@@ -22,9 +22,8 @@ public class StatisticManager extends Thread {
 
     private static final int SYNC_TIME = 1000;
     private static File storage;
-    private static final Object lock = new Object();
 
-    public static void initilizeStorage() {
+    public static void initializeStorage() {
         try {
             storage = File.createTempFile("statistic-manager", null);
             Log.d("STATISTIC MANAGER", "create storage " + storage.getPath());
@@ -50,15 +49,14 @@ public class StatisticManager extends Thread {
     @Override
     public void run() {
         running = true;
-        Log.d("STATISTIC MANAGER", "listen service");
+        Log.d("STATISTIC MANAGER", "start service");
         int activeClients;
         int transferredBytes;
         int requestCount;
-        while (running) {
 
+        while (running) {
             if (clients != null) {
                 sync(300);
-                activeClients = 0;
                 transferredBytes = 0;
                 requestCount = 0;
 
@@ -66,9 +64,8 @@ public class StatisticManager extends Thread {
                     activeClients = parseActiveClients(clients);
                     for (RequestEvent r : clients) {
                         if (!r.isIssued() && r.isComplete()) {
-                            Log.d("STATISTIC MANAGER", "processing " + r.getHttpHeaders());
                             requestCount++;
-                            transferredBytes += parseContentLength(r);
+                            transferredBytes += r.getTransferredBytes();
                             r.setIssued(true);
                         }
                     }
@@ -86,11 +83,7 @@ public class StatisticManager extends Thread {
             }
 
 
-            try {
-                Thread.sleep(SYNC_TIME);
-            } catch (InterruptedException e) {
-                Log.d("STATISTIC MANAGER", "sleep time error " + e);
-            }
+            sync(SYNC_TIME);
         }
 
         Log.d("STATISTIC MANAGER", "delete storage file " + (storage.delete() ? "success" : "false"));
@@ -116,7 +109,6 @@ public class StatisticManager extends Thread {
     }
 
     private StatisticData readData() {
-
         StatisticData statisticData = new StatisticData();
 
         String buffer;
@@ -133,8 +125,6 @@ public class StatisticManager extends Thread {
                     statisticData.setCurrentRequestCount(Integer.parseInt(data[2]));
                 }
             }
-        } catch (FileNotFoundException e) {
-            Log.d("STATISTIC", "could not read data " + e);
         } catch (IOException e) {
             Log.d("STATISTIC", "could not read data " + e);
         } finally {
@@ -150,24 +140,24 @@ public class StatisticManager extends Thread {
         return statisticData;
     }
 
-    private int parseContentLength(RequestEvent r) {
-        int contentLength = 0;
-
-        if (r.getHttpHeaders() != null) {
-            for (String h : r.getHttpHeaders()) {
-                if (h.startsWith("Content-Length: ")) {
-                    try {
-                        contentLength = Integer.parseInt(h.split("Content-Length: ")[1]);
-                    } catch (Exception e) {
-                        Log.d("STATISTIC MANAGER", "can not parse " + h + " header");
-                    }
-                    break;
-                }
-            }
-        }
-
-        return contentLength;
-    }
+//    private int parseContentLength(RequestEvent r) {
+//        int contentLength = 0;
+//
+//        if (r.getHttpHeaders() != null) {
+//            for (String h : r.getHttpHeaders()) {
+//                if (h.startsWith("Content-Length: ")) {
+//                    try {
+//                        contentLength = Integer.parseInt(h.split("Content-Length: ")[1]);
+//                    } catch (Exception e) {
+//                        Log.d("STATISTIC MANAGER", "can not parse " + h + " header");
+//                    }
+//                    break;
+//                }
+//            }
+//        }
+//
+//        return contentLength;
+//    }
 
     private synchronized void updateData(int activeClients, int transferredBytes, int requestCount) {
 
@@ -185,8 +175,6 @@ public class StatisticManager extends Thread {
             out.write(String.valueOf(activeClients) + " " + String.valueOf(currentTransferredBytes) + " " + String.valueOf(currentRequestCount) + "\n");
             out.newLine();
             out.flush();
-        } catch (FileNotFoundException e) {
-            Log.d("STATISTIC", "could not write data " + e);
         } catch (IOException e) {
             Log.d("STATISTIC", "could not write data" + e);
         } finally {
