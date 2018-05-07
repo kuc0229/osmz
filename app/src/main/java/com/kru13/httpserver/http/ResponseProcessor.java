@@ -3,6 +3,7 @@ package com.kru13.httpserver.http;
 import android.os.Environment;
 import android.util.Log;
 
+import com.kru13.httpserver.CameraManager;
 import com.kru13.httpserver.enums.HttpStatus;
 import com.kru13.httpserver.event.RequestEvent;
 import com.kru13.httpserver.exceptions.ExecuteCommandException;
@@ -208,11 +209,37 @@ public class ResponseProcessor extends Thread {
         if (requestURI.startsWith("/screencap/")) {
             makeScreenCap(out);
             return;
+        }
 
+        if (requestURI.startsWith("/camera/")) {
+            makeCameraPhoto(out);
+            return;
         }
 
         processGetFile(http_req, out);
 
+    }
+
+    private void makeCameraPhoto(OutputStream out) throws IOException {
+
+        service.takePictureFromCamera();
+
+        CameraManager cameraManager = service.getCameraManager();
+
+        if (cameraManager == null) {
+            HttpResponseProcessor.internalServerError(out, "Device has no camera");
+            return;
+        }
+
+        String photoPath = cameraManager.getLastFile() != null ?
+                cameraManager.getLastFile().getPath() : "/";
+
+
+        if (photoPath.startsWith("/storage/sdcard/")) {
+            photoPath = photoPath.substring("/storage/sdcard".length());
+        }
+
+        HttpResponseProcessor.processRedirect(out, photoPath);
     }
 
     private void makeScreenCap(OutputStream out) throws IOException {

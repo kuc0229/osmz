@@ -5,7 +5,11 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.hardware.Camera;
+import android.util.Log;
 
+import com.kru13.httpserver.CameraManager;
 import com.kru13.httpserver.ScreenshotActivity;
 import com.kru13.httpserver.SocketServer;
 import com.kru13.httpserver.StatisticManager;
@@ -16,10 +20,12 @@ import java.util.Date;
 public class HttpServerService extends IntentService {
 
     public static final String HTTP_SERVER_SERVICE_NAME = "HttpServerService";
+
     private SocketServer socketServer;
     private NotificationManager notificationManager;
     private StatisticManager statisticManager;
     private Context context;
+    private CameraManager cameraManager;
 
     public HttpServerService() {
         super(HTTP_SERVER_SERVICE_NAME);
@@ -39,6 +45,12 @@ public class HttpServerService extends IntentService {
         this.context = getApplicationContext();
         this.notificationManager =
                 (NotificationManager) this.context.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        if (checkCameraHardware(this.context)) {
+            this.cameraManager = new CameraManager();
+        } else {
+            Log.i("HttpServerService", "device has no camera hardware");
+        }
     }
 
     @Override
@@ -71,5 +83,43 @@ public class HttpServerService extends IntentService {
         Intent i = new Intent(this.context, ScreenshotActivity.class);
         i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(i);
+    }
+
+    public synchronized void takePictureFromCamera() {
+        if (cameraManager == null) {
+            Log.d("HttpServerService", "no camera hardware found");
+            // todo return info
+            return;
+        }
+
+        Camera cameraInstance = CameraManager.getCameraInstance();
+
+        if (cameraInstance == null) {
+            Log.d("HttpServerService", "could not get access to camera");
+            return;
+        }
+
+        cameraInstance.takePicture(null, null, this.cameraManager);
+
+        try {
+            // sync time
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Log.d("HttpServerService", "sync interrupted");
+        }
+
+        cameraInstance.release();
+    }
+
+    private boolean checkCameraHardware(Context context) {
+        if (context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public CameraManager getCameraManager() {
+        return cameraManager;
     }
 }

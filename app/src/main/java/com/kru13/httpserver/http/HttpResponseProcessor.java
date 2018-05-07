@@ -52,7 +52,6 @@ public class HttpResponseProcessor {
         out.flush();
     }
 
-
     static void processOkResponseWithImage(OutputStream os, File f) throws IOException {
         Log.d("HTTP", "200 OK");
         BufferedWriter out = new BufferedWriter(new OutputStreamWriter(os));
@@ -131,6 +130,17 @@ public class HttpResponseProcessor {
         out.write("Content-Length: " + body.length() + "\n");
         out.write("\n");
         out.write(body);
+        out.flush();
+    }
+
+    public static void processRedirect(OutputStream o, String path) throws IOException {
+        Log.d("HTTP", "302 Found");
+
+        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(o));
+
+        out.write("HTTP/1.0 302 Found\n");
+        out.write("Location: " + path + "\n");
+        out.write("\n");
         out.flush();
     }
 }
